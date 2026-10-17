@@ -1,4 +1,4 @@
-# Resolve Project Creation Tool — v0.01
+# Resolve Project Creation Tool — v0.02
 
 Assistant intégré à DaVinci Resolve Studio pour créer un projet, organiser ses chutiers, puis passer au montage.
 
@@ -21,9 +21,10 @@ Le plugin est enregistré dans le dossier standard des Workflow Integration Plug
 - Enregistre le projet actuellement ouvert avant de créer le nouveau projet.
 - Termine avec un rapport court et un bouton qui ouvre la page Edit et ferme l’assistant.
 
-## Limites v0.01
+## Limites v0.02
 
 - La génération de proxies reste désactivée. L’API installée permet d’associer un proxy existant, mais ne fournit pas d’action prise en charge pour générer les proxies.
+- Les fichiers XML Canon associés aux rushs sont lus pour récupérer la marque et le modèle de caméra, puis exclus de la liste des séquences. Les autres fichiers XML restent importables comme séquences.
 - `ffprobe` améliore la lecture des durées, formats et métadonnées caméra. Sans `ffprobe`, macOS Spotlight fournit un repli partiel et les champs de classement restent modifiables.
 - Une erreur de lecture des métadonnées produit un avertissement. Elle ne prouve pas que Resolve ne peut pas décoder le média.
 - Les résultats de métadonnées caméra et date doivent encore être confirmés sur des rushs réels représentatifs.

@@ -99,6 +99,27 @@ function cameraMake(tags) {
   ]);
 }
 
+async function readCanonSidecar(filePath) {
+  const sidecarPath = `${filePath.slice(0, -path.extname(filePath).length)}.XML`;
+  try {
+    const stat = await fs.stat(sidecarPath);
+    if (!stat.isFile() || stat.size > 1024 * 1024) return null;
+    const xml = await fs.readFile(sidecarPath, 'utf8');
+    // Canon sidecars are tiny metadata documents. Reject DTD/entity declarations
+    // and read only the two expected leaf values to avoid external entity parsing.
+    if (/<!DOCTYPE|<!ENTITY/i.test(xml)) return null;
+    const leaf = (name) => {
+      const match = xml.match(new RegExp(`<${name}\\b[^>]*>([^<]*)<\\/${name}\\s*>`, 'i'));
+      return match ? cleanText(match[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")) : '';
+    };
+    const make = leaf('Manufacturer');
+    const model = leaf('ModelName');
+    return make || model ? { cameraMake: make, cameraModel: model } : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function normalizeDate(value) {
   const input = cleanText(value);
   const match = input.match(/(\d{4})[-:]?(\d{2})[-:]?(\d{2})/);
@@ -188,6 +209,7 @@ async function scanDirectory(root) {
   const stat = await fs.stat(resolved);
   if (!stat.isDirectory()) throw new Error(`Dossier source invalide : ${root}`);
   const files = [];
+  const canonSidecars = new Set();
   const pending = [resolved];
   while (pending.length) {
     const current = pending.pop();
@@ -202,10 +224,16 @@ async function scanDirectory(root) {
       }
       if (!entry.isFile()) continue;
       const extension = path.extname(entry.name).toLowerCase();
+      if (VIDEO.has(extension)) {
+        const sidecar = `${filePath.slice(0, -extension.length)}.XML`;
+        try {
+          if ((await fs.stat(sidecar)).isFile()) canonSidecars.add(path.resolve(sidecar));
+        } catch (_) {}
+      }
       if (SUPPORTED.has(extension)) files.push({ filePath, extension, category: categoryFor(extension) });
     }
   }
-  return files;
+  return files.filter((file) => !canonSidecars.has(path.resolve(file.filePath)));
 }
 
 async function enrichFile(file) {
@@ -214,7 +242,14 @@ async function enrichFile(file) {
     probeWithFFprobe(file.filePath),
     findFFprobe().then((probePath) => probePath ? null : probeWithSpotlight(file.filePath))
   ]);
-  const metadata = probe || fallback || { verified: false };
+  const metadata = { ...(probe || fallback || { verified: false }) };
+  if (VIDEO.has(file.extension) && (!metadata.cameraMake || !metadata.cameraModel)) {
+    const sidecar = await readCanonSidecar(file.filePath);
+    if (sidecar) {
+      metadata.cameraMake ||= sidecar.cameraMake;
+      metadata.cameraModel ||= sidecar.cameraModel;
+    }
+  }
   const rawMake = metadata.cameraMake || '';
   const rawModel = metadata.cameraModel || '';
   const shootingDate = metadata.date || localDate(stat.birthtime);
