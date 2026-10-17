@@ -32,11 +32,12 @@ The product combines Resolve project setup, guided media classification, and cam
 
 ## Capabilities and Constraints
 
-- One fixed base project setup; no user-defined project templates in V1.
+- Start from the base Media Pool structure, then rename, add, or remove bins per project. Do not persist user-defined project templates.
 - Suggest media classification by type and allow correction before import.
 - Organize video rushs as brand → camera model → shooting date. Prefer shooting-date metadata, falling back to file creation date and indicating fallback values.
 - Detect likely duplicates by filename, file size, and duration; optionally compare suspicious groups by full SHA-256 content hash and restore distinct files to the import list.
 - Allow long media scans and SHA-256 duplicate checks to be cancelled without discarding selected source folders or previously confirmed results.
+- Refresh all selected source folders to detect new or removed media while preserving manual classifications and inclusion choices.
 - Optionally prepare an “[Project Name] — Assemblage” timeline with retained rushs placed end-to-end. Derive timeline format from the dominant rush format; default to 16:9 when no dominant format emerges.
 - Offer optional proxy preparation: append selected source folders to Blackmagic Proxy Generator's saved watch-folder list without duplicates, then open the installed app. Preserve existing watched paths and refuse to edit preferences while the generator is running. Format and resolution remain user-controlled; generation may start according to the generator's saved Start setting.
 - Before import, group review alerts by empty files, unavailable technical analysis, unidentified camera, fallback file-creation date, and probable duplicates. Alerts remain non-blocking because unavailable metadata analysis does not prove Resolve cannot read a file. The plugin does not estimate proxy storage space; the editor configures and starts proxy generation in Blackmagic Proxy Generator.

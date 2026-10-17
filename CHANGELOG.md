@@ -1,5 +1,13 @@
 # Historique des versions
 
+## v0.12 — 17 octobre 2026
+
+- Ajoute un bouton pour relire tous les dossiers sources et détecter les nouveaux médias ou les fichiers retirés.
+- Conserve les corrections manuelles et les choix d’inclusion pendant l’actualisation.
+- Permet de renommer, ajouter et retirer les chutiers avant la création du projet.
+- Empêche le retrait d’un chutier qui contient encore des médias et permet d’affecter les médias aux destinations ajoutées.
+- Importe les médias et les séquences dans le chutier choisi.
+
 ## v0.11 — 17 octobre 2026
 
 - Ajoute ou retire des dossiers sources sans réanalyser les médias déjà examinés.

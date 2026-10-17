@@ -1,4 +1,4 @@
-# Resolve Project Creation Tool — v0.11
+# Resolve Project Creation Tool — v0.12
 
 Assistant macOS intégré à **DaVinci Resolve Studio** pour créer un projet, trier les médias dans le Media Pool et préparer le montage. Il s’ouvre depuis le menu de Resolve, guide la préparation, puis se ferme quand le projet est prêt.
 
@@ -17,14 +17,14 @@ Le plugin a été vérifié avec DaVinci Resolve Studio 21.1.1 sur macOS. Le fon
 
 ### Installeur graphique
 
-1. Télécharge `Resolve-Project-Creation-Tool-v0.11.pkg` depuis la [dernière version](https://github.com/plouis375/resolve-project-creation-tool/releases/latest).
+1. Télécharge `Resolve-Project-Creation-Tool-v0.12.pkg` depuis la [dernière version](https://github.com/plouis375/resolve-project-creation-tool/releases/latest).
 2. Ferme DaVinci Resolve, puis ouvre le `.pkg` par double-clic et suis les étapes de l’installeur macOS. Il demande un mot de passe administrateur pour copier le plugin dans le dossier partagé de Resolve.
 3. Si macOS bloque le paquet parce qu’il n’est pas signé, ouvre **Réglages Système → Confidentialité et sécurité**, puis choisis **Ouvrir quand même** pour ce paquet. Ce paquet n’est pas signé ni notarié faute de compte développeur Apple.
 4. Rouvre Resolve et choisis **Workspace → Workflow Integrations → Resolve Project Creation Tool**.
 
 ### Installation depuis l’archive ZIP
 
-Si tu préfères ne pas utiliser le paquet macOS, télécharge `Resolve-Project-Creation-Tool-v0.11.zip`, décompresse-le, ferme Resolve et ouvre `install.command` par double-clic. Confirme l’ouverture si Gatekeeper le demande, puis saisis ton mot de passe administrateur. Cette méthode conserve aussi une sauvegarde de l’installation précédente.
+Si tu préfères ne pas utiliser le paquet macOS, télécharge `Resolve-Project-Creation-Tool-v0.12.zip`, décompresse-le, ferme Resolve et ouvre `install.command` par double-clic. Confirme l’ouverture si Gatekeeper le demande, puis saisis ton mot de passe administrateur. Cette méthode conserve aussi une sauvegarde de l’installation précédente.
 
 Une sauvegarde horodatée de la version précédente est conservée dans `.backups`, à l’intérieur du dossier des intégrations Resolve.
 
@@ -33,8 +33,8 @@ Après une mise à jour, redémarre Resolve avant d’ouvrir le plugin. Pour le 
 ## Utilisation pas à pas
 
 1. **Projet** — Saisis le nom du projet. Il sera créé dans la bibliothèque et le dossier actuellement sélectionnés dans Resolve. Le nom proposé par défaut est « Campagne Nike 2026 »; il est modifiable.
-2. **Sources** — Ajoute un ou plusieurs dossiers. L’analyse parcourt leurs sous-dossiers et présente les médias reconnus, leur taille, leur durée et leur destination dans Resolve. Tu peux chercher un fichier, changer sa catégorie ou l’exclure. Ajouter un dossier analyse uniquement ses nouveaux médias; retirer un dossier met à jour la sélection sans refaire l’analyse des autres. Les corrections manuelles sont conservées; les doublons probables sont recalculés.
-3. **Organisation** — Choisis si tu veux créer une timeline d’assemblage. Le chutier Exports est toujours créé, mais aucun réglage de rendu n’est appliqué.
+2. **Sources** — Ajoute un ou plusieurs dossiers. L’analyse parcourt leurs sous-dossiers et présente les médias reconnus, leur taille, leur durée et leur destination dans Resolve. Tu peux chercher un fichier, changer sa catégorie ou l’exclure. Ajouter un dossier analyse uniquement ses nouveaux médias; retirer un dossier met à jour la sélection sans refaire l’analyse des autres. Le bouton **Actualiser** relit tous les dossiers sélectionnés pour repérer les nouveaux médias et les fichiers retirés. Les corrections manuelles et les choix d’inclusion sont conservés; les doublons probables sont recalculés.
+3. **Organisation** — Renomme, ajoute ou retire les chutiers du Media Pool pour ce projet. Un chutier contenant des médias ne peut être retiré qu’après avoir reclassé ses fichiers à l’étape Sources. Choisis aussi si tu veux créer une timeline d’assemblage. Aucun réglage de rendu n’est appliqué au chutier Exports.
 4. **Création** — L’outil enregistre le projet déjà ouvert s’il y en a un, crée le nouveau projet, ajoute les chutiers et importe les éléments retenus. Un rapport indique les imports réussis et ceux à vérifier.
 5. **Montage** — Le bouton de fin ouvre la page Edit et ferme l’assistant.
 
@@ -55,7 +55,7 @@ Nom du projet
 └── Exports
 ```
 
-Les rushs sont classés par marque, modèle et date. Les autres types de média sont rangés directement dans leur chutier. Cette structure est créée **dans Resolve** : l’outil ne crée pas de dossiers Finder et ne déplace ni ne copie les sources.
+Les rushs sont classés par marque, modèle et date. Les autres types de média sont rangés directement dans leur chutier. Cette structure de départ peut être renommée, complétée ou réduite avant la création; les destinations ajoutées sont disponibles à l’étape Sources. Ces choix s’appliquent au projet en cours. Cette structure est créée **dans Resolve** : l’outil ne crée pas de dossiers Finder et ne déplace ni ne copie les sources.
 
 ## Classement et import des médias
 
@@ -79,7 +79,7 @@ L’écran **Sources** regroupe les alertes par type et permet de filtrer la lis
 
 ## Timeline d’assemblage (facultative)
 
-Si l’option est cochée, Resolve crée `Nom du projet — Assemblage` dans le chutier Séquences avec les rushs retenus, bout à bout. La résolution et la fréquence suivent le format vidéo le plus représenté. En l’absence de format dominant, le repli est 1920 × 1080 (16:9), avec une fréquence détectée si possible, sinon 24 i/s.
+Si l’option est cochée, Resolve crée `Nom du projet — Assemblage` dans le chutier Séquences avec les rushs retenus, bout à bout. Si ce chutier a été retiré, la timeline est créée à la racine du projet. La résolution et la fréquence suivent le format vidéo le plus représenté. En l’absence de format dominant, le repli est 1920 × 1080 (16:9), avec une fréquence détectée si possible, sinon 24 i/s.
 
 Cette option prépare une timeline de départ; elle ne crée pas de montage éditorial, ne coupe pas les plans et ne choisit pas de prises.
 
@@ -89,7 +89,7 @@ Cette option prépare une timeline de départ; elle ne crée pas de montage édi
 
 Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; il peut donc traiter des fichiers qui ont été exclus de la liste d’import du plugin. Les proxies sont écrits dans des sous-dossiers `proxy` à côté des médias. Resolve associe automatiquement les proxies reconnus à leurs originaux. L’outil ne change pas le format, la résolution ni le réglage de démarrage du générateur. Selon ce dernier réglage, le traitement peut démarrer automatiquement à l’ouverture. Les dossiers enregistrés restent surveillés jusqu’à ce que tu les retires dans l’application. L’outil met à jour le fichier de préférences local de Blackmagic Proxy Generator; Blackmagic ne documente pas d’API publique pour cette opération, donc une évolution de son format de préférences pourrait nécessiter une mise à jour du plugin.
 
-## Fonctions hors périmètre de la v0.11
+## Fonctions hors périmètre de la v0.12
 
 - **Archivage** — Aucun archivage de projet n’est proposé; cette fonction n’est pas prévue dans le périmètre actuel.
 - **Dossiers Finder et sauvegarde des médias** — Le plugin organise les chutiers Resolve et conserve les médias à leur emplacement. Il ne crée pas une arborescence disque et ne réalise pas de copie de sauvegarde.

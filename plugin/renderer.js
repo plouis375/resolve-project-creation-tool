@@ -1,5 +1,4 @@
-const CATEGORIES = ['Rushs', 'Assets', 'Éléments', 'Séquences', 'Musiques'];
-const BIN_NAMES = [...CATEGORIES, 'Exports'];
+const DEFAULT_FOLDERS = ['Rushs', 'Assets', 'Éléments', 'Séquences', 'Musiques', 'Exports'].map((name) => ({ id: name, name, core: true }));
 const PAGE_SIZE = 160;
 const state = {
   step: 1,
@@ -8,10 +7,12 @@ const state = {
   sourcePaths: [],
   scanId: '',
   files: [],
+  folders: DEFAULT_FOLDERS.map((folder) => ({ ...folder })),
   filter: '',
   reviewFilter: '',
   page: 0,
   scanning: false,
+  refreshing: false,
   scanOperationId: '',
   creating: false,
   ffprobeAvailable: false,
@@ -46,8 +47,12 @@ function categoryColor(category) {
 }
 
 function destinationText(file) {
-  if (file.category !== 'Rushs') return file.category;
-  return `Rushs › ${file.cameraBrand || 'À identifier'} › ${file.cameraModel || 'À identifier'} › ${file.shootingDate || 'Date inconnue'}`;
+  if (file.category !== 'Rushs') return folderName(file.category);
+  return `${folderName('Rushs')} › ${file.cameraBrand || 'À identifier'} › ${file.cameraModel || 'À identifier'} › ${file.shootingDate || 'Date inconnue'}`;
+}
+
+function folderName(id) {
+  return state.folders.find((folder) => folder.id === id)?.name || id;
 }
 
 function includedFiles() {
@@ -59,7 +64,7 @@ function formatSummary() {
   const size = files.reduce((total, file) => total + file.size, 0);
   $('mediaSummary').textContent = state.files.length
     ? `${files.length} média${files.length > 1 ? 's' : ''} retenu${files.length > 1 ? 's' : ''} · ${bytesLabel(size)} · ${state.files.length - files.length} ignoré${state.files.length - files.length > 1 ? 's' : ''}`
-    : 'Aucun dossier sélectionné';
+    : state.sourcePaths.length ? 'Aucun média détecté dans les dossiers sélectionnés' : 'Aucun dossier sélectionné';
   $('toOptions').disabled = !state.files.length || !files.length || !state.scanId || state.scanning || state.duplicateCheckBusy || !state.connected;
 }
 
@@ -90,12 +95,57 @@ function showToast(message) {
 }
 
 function renderBins() {
-  $('binPreview').innerHTML = BIN_NAMES.map((name) => `<span class="bin-chip"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5h5l1.6 1.7h8.4v7.3H2.5z"/><path d="M2.5 5.5V4h5l1.6 1.7"/></svg>${escapeHTML(name)}</span>`).join('');
+  $('binPreview').innerHTML = state.folders.map(({ name }) => `<span class="bin-chip"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5h5l1.6 1.7h8.4v7.3H2.5z"/><path d="M2.5 5.5V4h5l1.6 1.7"/></svg>${escapeHTML(name)}</span>`).join('');
+}
+
+function renderBinEditor() {
+  $('binEditorList').innerHTML = state.folders.map((folder) => {
+    const used = state.files.filter((file) => file.category === folder.id).length;
+    return `<div class="bin-edit-row"><input data-bin-name="${escapeHTML(folder.id)}" value="${escapeHTML(folder.name)}" maxlength="80" aria-label="Nom du chutier"><span>${used} média${used === 1 ? '' : 's'}</span><button type="button" data-remove-bin="${escapeHTML(folder.id)}" aria-label="Retirer le chutier ${escapeHTML(folder.name)}" title="${used ? 'Reclasse d’abord ses médias' : 'Retirer ce chutier'}" ${used ? 'disabled' : ''}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div>`;
+  }).join('');
+  $('addBin').disabled = state.scanning || state.duplicateCheckBusy;
+  document.querySelectorAll('[data-bin-name]').forEach((input) => input.addEventListener('change', () => {
+    const folder = state.folders.find((item) => item.id === input.dataset.binName);
+    if (!folder) return;
+    const name = input.value.replace(/[\\/:\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim();
+    const duplicate = state.folders.some((item) => item.id !== folder.id && item.name.toLocaleLowerCase('fr') === name.toLocaleLowerCase('fr'));
+    if (!name || name.length > 80 || duplicate) {
+      showToast(!name ? 'Le nom du chutier ne peut pas être vide.' : duplicate ? 'Un chutier porte déjà ce nom.' : 'Le nom du chutier est limité à 80 caractères.');
+      renderBinEditor();
+      return;
+    }
+    folder.name = name;
+    renderBins();
+    renderTable();
+    renderBinEditor();
+  }));
+  document.querySelectorAll('[data-remove-bin]').forEach((button) => button.addEventListener('click', () => {
+    const folder = state.folders.find((item) => item.id === button.dataset.removeBin);
+    if (!folder || state.files.some((file) => file.category === folder.id)) return;
+    state.folders = state.folders.filter((item) => item.id !== folder.id);
+    renderBinEditor();
+    renderBins();
+  }));
+  syncCreateButton();
+}
+
+function addCustomBin() {
+  let name = 'Nouveau chutier';
+  let suffix = 2;
+  while (state.folders.some((folder) => folder.name.toLocaleLowerCase('fr') === name.toLocaleLowerCase('fr'))) name = `Nouveau chutier ${suffix++}`;
+  const folder = { id: `custom-${crypto.randomUUID()}`, name, core: false };
+  state.folders.push(folder);
+  renderBinEditor();
+  const input = [...document.querySelectorAll('[data-bin-name]')].find((item) => item.dataset.binName === folder.id);
+  input?.focus();
+  input?.select();
 }
 
 function renderSources() {
   $('chooseSources').disabled = state.scanning || state.duplicateCheckBusy;
-  $('chooseSources').querySelector('span').textContent = state.scanning ? 'Analyse en cours…' : state.sourcePaths.length && !state.files.length ? 'Relancer l’analyse' : 'Ajouter un dossier';
+  $('chooseSources').querySelector('span').textContent = state.scanning && !state.refreshing ? 'Analyse…' : state.sourcePaths.length && !state.files.length ? 'Analyser' : 'Ajouter';
+  $('refreshSources').disabled = !state.scanId || state.scanning || state.duplicateCheckBusy;
+  $('refreshSources').querySelector('span').textContent = state.refreshing ? 'Lecture…' : 'Actualiser';
   if (!state.sourcePaths.length) {
     $('sourceList').innerHTML = '<div class="source-empty">Ajoute les dossiers qui contiennent tes rushs, musiques et éléments.</div>';
     return;
@@ -152,7 +202,7 @@ function renderTable() {
   const filtered = state.files.filter((file) => {
     if ($('hideDuplicates').checked && file.duplicateOf && state.reviewFilter !== 'duplicate') return false;
     if (state.reviewFilter && !reviewReasons(file).some((reason) => reason.id === state.reviewFilter)) return false;
-    return !query || file.name.toLocaleLowerCase('fr').includes(query) || file.filePath.toLocaleLowerCase('fr').includes(query) || file.category.toLocaleLowerCase('fr').includes(query);
+    return !query || file.name.toLocaleLowerCase('fr').includes(query) || file.filePath.toLocaleLowerCase('fr').includes(query) || folderName(file.category).toLocaleLowerCase('fr').includes(query);
   });
   const start = state.page * PAGE_SIZE;
   const visible = filtered.slice(start, start + PAGE_SIZE);
@@ -171,8 +221,8 @@ function renderTable() {
       const badges = reviewReasons(file).map((reason) => `<span class="review-mark ${reason.id}-mark">${escapeHTML(reason.label)}</span>`).join('');
       const destination = file.category === 'Rushs'
         ? `<div class="destination-edit"><input data-edit="cameraBrand" data-file="${file.id}" value="${escapeHTML(file.cameraBrand)}" placeholder="Marque" aria-label="Marque de caméra pour ${escapeHTML(file.name)}"><input data-edit="cameraModel" data-file="${file.id}" value="${escapeHTML(file.cameraModel)}" placeholder="Modèle" aria-label="Modèle de caméra pour ${escapeHTML(file.name)}"><input type="date" data-edit="shootingDate" data-file="${file.id}" value="${escapeHTML(file.shootingDate)}" aria-label="Date de tournage pour ${escapeHTML(file.name)}"></div>`
-        : `<span class="destination-path" title="${escapeHTML(file.category)}">${escapeHTML(file.category)}</span>`;
-      return `<tr data-row="${file.id}" class="${file.duplicateOf ? 'duplicate-row' : ''}"><td><div class="file-cell"><span class="file-symbol">${categoryColor(file.category)}</span><div class="file-copy"><div class="file-name" title="${escapeHTML(file.name)}">${escapeHTML(file.name)}</div><div class="file-path" title="${escapeHTML(file.filePath)}">${escapeHTML(file.filePath)}</div><div class="review-marks">${badges}</div></div></div></td><td><select class="type-select" data-category="${file.id}" aria-label="Type de ${escapeHTML(file.name)}">${CATEGORIES.map((category) => `<option${file.category === category ? ' selected' : ''}>${escapeHTML(category)}</option>`).join('')}</select></td><td><div class="destination-cell"><span class="folder-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 5.5h6l1.4 1.6H18v8.9H2z"/><path d="M2 5.5V4h6l1.4 1.6"/></svg></span>${destination}</div></td><td class="size-cell">${bytesLabel(file.size)}</td><td class="duration-cell">${durationLabel(file.duration)}</td><td><input class="row-toggle" type="checkbox" data-include="${file.id}" ${file.include ? 'checked' : ''} aria-label="Inclure ${escapeHTML(file.name)}"></td></tr>`;
+        : `<span class="destination-path" title="${escapeHTML(folderName(file.category))}">${escapeHTML(folderName(file.category))}</span>`;
+      return `<tr data-row="${file.id}" class="${file.duplicateOf ? 'duplicate-row' : ''}"><td><div class="file-cell"><span class="file-symbol">${categoryColor(file.category)}</span><div class="file-copy"><div class="file-name" title="${escapeHTML(file.name)}">${escapeHTML(file.name)}</div><div class="file-path" title="${escapeHTML(file.filePath)}">${escapeHTML(file.filePath)}</div><div class="review-marks">${badges}</div></div></div></td><td><select class="type-select" data-category="${file.id}" aria-label="Type de ${escapeHTML(file.name)}">${state.folders.map((folder) => `<option value="${escapeHTML(folder.id)}"${file.category === folder.id ? ' selected' : ''}>${escapeHTML(folder.name)}</option>`).join('')}</select></td><td><div class="destination-cell"><span class="folder-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 5.5h6l1.4 1.6H18v8.9H2z"/><path d="M2 5.5V4h6l1.4 1.6"/></svg></span>${destination}</div></td><td class="size-cell">${bytesLabel(file.size)}</td><td class="duration-cell">${durationLabel(file.duration)}</td><td><input class="row-toggle" type="checkbox" data-include="${file.id}" ${file.include ? 'checked' : ''} aria-label="Inclure ${escapeHTML(file.name)}"></td></tr>`;
     }).join('');
   }
 
@@ -220,6 +270,7 @@ function renderTable() {
 
 function updateDuplicateTools() {
   $('chooseSources').disabled = state.scanning || state.duplicateCheckBusy;
+  $('refreshSources').disabled = !state.scanId || state.scanning || state.duplicateCheckBusy;
   document.querySelectorAll('[data-remove-source]').forEach((button) => { button.disabled = state.scanning || state.duplicateCheckBusy; });
   const count = state.files.filter((file) => file.duplicateOf).length;
   $('duplicateTools').hidden = !count && !$('duplicateCheckStatus').textContent;
@@ -263,11 +314,12 @@ function setScanProgress(progress) {
   text.textContent = `${progress.label} · ${progress.current} / ${progress.total}`;
 }
 
-async function scanSelectedSources(pathsToScan = state.sourcePaths, previousState = null) {
+async function scanSelectedSources(pathsToScan = state.sourcePaths, previousState = null, forceRefresh = false) {
   if (!state.sourcePaths.length) return;
   state.scanOperationId = crypto.randomUUID();
   state.reviewFilter = '';
   state.scanning = true;
+  state.refreshing = forceRefresh;
   $('scanProgress').hidden = false;
   $('toOptions').disabled = true;
   $('chooseSources').disabled = true;
@@ -280,23 +332,28 @@ async function scanSelectedSources(pathsToScan = state.sourcePaths, previousStat
       pathsToScan,
       previousState?.scanId || '',
       state.sourcePaths,
-      previousState?.files.map(({ id, include, includeManuallyChanged, duplicateManuallyChanged }) => ({ id, include, includeManuallyChanged, duplicateManuallyChanged })) || []
+      previousState?.files.map(({ id, include, includeManuallyChanged, duplicateManuallyChanged }) => ({ id, include, includeManuallyChanged, duplicateManuallyChanged })) || [],
+      forceRefresh
     );
     if (result.cancelled) {
       if (previousState) Object.assign(state, previousState);
       else { state.scanId = ''; state.files = []; }
       renderSources();
       renderTable();
-      showToast(previousState ? 'Mise à jour interrompue. Les résultats précédents sont conservés.' : 'Analyse interrompue. Tu peux la relancer ou retirer un dossier.');
+      showToast(previousState ? forceRefresh ? 'Actualisation interrompue. Les résultats précédents sont conservés.' : 'Mise à jour interrompue. Les résultats précédents sont conservés.' : 'Analyse interrompue. Tu peux la relancer ou retirer un dossier.');
       return;
     }
     state.scanId = result.scanId;
     const previousFiles = new Map((previousState?.files || []).map((file) => [file.id, file]));
+    const fallbackCategory = state.folders.find((folder) => folder.id === 'Assets')?.id || state.folders[0]?.id || '';
     state.files = result.files.map((file) => {
       const old = previousFiles.get(file.id);
+      const category = old && state.folders.some((folder) => folder.id === old.category)
+        ? old.category
+        : state.folders.some((folder) => folder.id === file.category) ? file.category : fallbackCategory;
       return old ? {
         ...file,
-        category: old.category,
+        category,
         cameraBrand: old.cameraBrand,
         cameraModel: old.cameraModel,
         shootingDate: old.shootingDate,
@@ -304,7 +361,7 @@ async function scanSelectedSources(pathsToScan = state.sourcePaths, previousStat
         include: old.includeManuallyChanged ? old.include : file.include,
         includeManuallyChanged: old.includeManuallyChanged,
         duplicateManuallyChanged: old.duplicateManuallyChanged
-      } : file;
+      } : { ...file, category };
     });
     $('duplicateCheckStatus').textContent = '';
     state.ffprobeAvailable = result.ffprobeAvailable;
@@ -313,7 +370,7 @@ async function scanSelectedSources(pathsToScan = state.sourcePaths, previousStat
     state.page = 0;
     renderSources();
     renderTable();
-    if (previousState) showToast('Dossiers mis à jour. L’analyse des doublons a été réinitialisée.');
+    if (previousState) showToast(`${forceRefresh ? 'Médias actualisés' : 'Dossiers mis à jour'}. L’analyse des doublons a été réinitialisée.`);
   } catch (error) {
     showToast(error.message || 'Analyse des dossiers impossible.');
     if (previousState) Object.assign(state, previousState);
@@ -321,6 +378,7 @@ async function scanSelectedSources(pathsToScan = state.sourcePaths, previousStat
     renderTable();
   } finally {
     state.scanning = false;
+    state.refreshing = false;
     state.scanOperationId = '';
     $('scanProgress').hidden = true;
     $('chooseSources').disabled = false;
@@ -334,7 +392,8 @@ async function scanSelectedSources(pathsToScan = state.sourcePaths, previousStat
 async function chooseSources() {
   if (state.scanning || state.duplicateCheckBusy) return;
   if (state.sourcePaths.length && !state.files.length) {
-    await scanSelectedSources();
+    if (state.scanId) await refreshSources();
+    else await scanSelectedSources();
     return;
   }
   try {
@@ -353,7 +412,15 @@ async function chooseSources() {
   }
 }
 
+async function refreshSources() {
+  if (!state.scanId || state.scanning || state.duplicateCheckBusy) return;
+  const previousState = { sourcePaths: [...state.sourcePaths], scanId: state.scanId, files: state.files };
+  await scanSelectedSources(state.sourcePaths, previousState, true);
+}
+
 function prepareOptionsView() {
+  renderBins();
+  renderBinEditor();
   const files = includedFiles();
   const size = files.reduce((sum, file) => sum + file.size, 0);
   const rushes = files.filter((file) => file.category === 'Rushs');
@@ -372,7 +439,13 @@ function prepareOptionsView() {
   $('openProjectText').textContent = state.currentProject
     ? `Le projet ouvert « ${state.currentProject} » sera enregistré avant la création.`
     : 'Aucun autre projet ouvert dans Resolve.';
-  $('createNow').disabled = !state.connected || state.creating || !files.length;
+  syncCreateButton();
+}
+
+function syncCreateButton() {
+  const files = includedFiles();
+  const missingFolder = files.some((file) => !state.folders.some((folder) => folder.id === file.category));
+  $('createNow').disabled = !state.connected || state.creating || !files.length || missingFolder;
 }
 
 function updateCreateProgress(progress) {
@@ -395,7 +468,7 @@ function renderCompletion(result) {
   const rows = [
     ['Médias importés', `${result.importedCount}`],
     ['Doublons ignorés', `${result.excludedCount}`],
-    ['Chutiers créés', BIN_NAMES.join(' · ')],
+    ['Chutiers créés', result.createdBins.join(' · ')],
     ['Timeline', result.timelineName ? `${result.timelineName} · ${result.timelineFormat}` : 'Aucune timeline créée']
   ];
   $('completionReport').innerHTML = rows.map(([label, value]) => `<div class="report-row"><span>${escapeHTML(label)}</span><span>${escapeHTML(value)}</span></div>`).join('');
@@ -412,6 +485,7 @@ async function createProjectNow() {
   if (!name) return showToast('Saisis un nom de projet.');
   if (/[\\/:\u0000-\u001f]/.test(name)) return showToast('Le nom ne peut pas contenir de barre oblique.');
   if (name.length > 100) return showToast('Le nom du projet doit contenir 100 caractères maximum.');
+  if (includedFiles().some((file) => !state.folders.some((folder) => folder.id === file.category))) return showToast('Un média est classé dans un chutier supprimé. Reclasse-le à l’étape Sources.');
   state.creating = true;
   $('createProgress').hidden = false;
   $('createProgressBar').style.width = '0%';
@@ -422,6 +496,7 @@ async function createProjectNow() {
       projectName: name,
       scanId: state.scanId,
       createTimeline: $('createTimeline').checked,
+      folders: state.folders.map(({ id, name }) => ({ id, name })),
       files: state.files.map(({ id, category, cameraBrand, cameraModel, shootingDate, include }) => ({ id, category, cameraBrand, cameraModel, shootingDate, include }))
     });
     renderCompletion(result);
@@ -476,8 +551,10 @@ $('openProxyGenerator').addEventListener('click', async () => {
 $('toSources').addEventListener('click', () => setStep(2));
 $('backToProject').addEventListener('click', () => setStep(1));
 $('toOptions').addEventListener('click', () => setStep(3));
+$('addBin').addEventListener('click', addCustomBin);
 $('backToSources').addEventListener('click', () => setStep(2));
 $('chooseSources').addEventListener('click', chooseSources);
+$('refreshSources').addEventListener('click', refreshSources);
 $('createNow').addEventListener('click', createProjectNow);
 $('cancelScan').addEventListener('click', async () => {
   if (!state.scanOperationId) return;

@@ -347,7 +347,7 @@ function bestSourceRoot(filePath, roots) {
     .sort((a, b) => (b.realPath || b.sourcePath || b).length - (a.realPath || a.sourcePath || a).length)[0]?.sourcePath || '';
 }
 
-async function scanSources(event, paths, previousScanId, activePaths, previousFiles, signal) {
+async function scanSources(event, paths, previousScanId, activePaths, previousFiles, forceRefresh, signal) {
   const roots = [...new Set((activePaths || paths || []).map((item) => path.resolve(item)))];
   const rootRecords = await Promise.all(roots.map(async (sourcePath) => ({
     sourcePath,
@@ -358,7 +358,8 @@ async function scanSources(event, paths, previousScanId, activePaths, previousFi
   if (previousScanId && !previous) throw new Error('Analyse expirée. Reprends la sélection des dossiers.');
   const edits = new Map((Array.isArray(previousFiles) ? previousFiles : []).map((file) => [file.id, file]));
   const allFiles = [];
-  const retained = (previous || []).filter((file) => bestSourceRoot(file.filePath, rootRecords));
+  const retained = (forceRefresh ? [] : previous || []).filter((file) => bestSourceRoot(file.filePath, rootRecords));
+  const previousByPath = new Map((previous || []).map((file) => [path.resolve(file.filePath), file]));
   for (const file of retained) {
     const sourceFolder = bestSourceRoot(file.filePath, rootRecords);
     const edit = edits.get(file.id);
@@ -379,7 +380,7 @@ async function scanSources(event, paths, previousScanId, activePaths, previousFi
     seenPaths.add(key);
     return true;
   });
-  if (!uniqueFiles.length) throw new Error('Aucun média reconnu dans les dossiers choisis.');
+  if (!uniqueFiles.length && !previousScanId) throw new Error('Aucun média reconnu dans les dossiers choisis.');
 
   const newFiles = uniqueFiles.filter((file) => !file.id);
   const results = uniqueFiles.filter((file) => file.id);
@@ -391,9 +392,17 @@ async function scanSources(event, paths, previousScanId, activePaths, previousFi
       throwIfAborted(signal);
       const index = cursor++;
       enriched[index] = await enrichFile(newFiles[index], signal);
+      const old = previousByPath.get(path.resolve(newFiles[index].filePath));
+      if (old) {
+        const edit = edits.get(old.id);
+        enriched[index].id = old.id;
+        enriched[index].include = edit?.includeManuallyChanged ? edit.include !== false : old.duplicateAutoExcluded && !old.duplicateManuallyChanged ? true : old.include;
+        enriched[index].includeManuallyChanged = Boolean(edit?.includeManuallyChanged);
+        enriched[index].duplicateManuallyChanged = Boolean(edit?.duplicateManuallyChanged);
+      }
       completed += 1;
       if (completed % 5 === 0 || completed === newFiles.length) {
-        sendProgress(event, { stage: 'scan', current: completed, total: newFiles.length, label: 'Analyse des nouveaux médias' });
+        sendProgress(event, { stage: 'scan', current: completed, total: newFiles.length, label: forceRefresh ? 'Actualisation des médias' : 'Analyse des nouveaux médias' });
       }
     }
   }
@@ -514,6 +523,26 @@ function safeBinName(value, fallback) {
   return (name || fallback).slice(0, 80);
 }
 
+function normalizeBinConfig(input) {
+  const folders = Array.isArray(input) ? input : BIN_NAMES.map((name) => ({ id: name, name }));
+  if (folders.length > 60) throw new Error('Un projet ne peut pas contenir plus de 60 chutiers.');
+  const ids = new Set();
+  const names = new Set();
+  return folders.map((folder) => {
+    const id = cleanText(folder?.id).trim();
+    const custom = /^custom-[0-9a-f-]{36}$/i.test(id);
+    if (!BIN_NAMES.includes(id) && !custom) throw new Error('Identifiant de chutier invalide.');
+    if (ids.has(id)) throw new Error('Deux chutiers ont le même identifiant.');
+    ids.add(id);
+    const name = cleanText(folder?.name).replace(/\s+/g, ' ').trim();
+    if (!name || name.length > 80 || /[\\/:\u0000-\u001f]/.test(name)) throw new Error('Chaque chutier doit avoir un nom valide de 80 caractères maximum.');
+    const normalizedName = name.toLocaleLowerCase('fr');
+    if (names.has(normalizedName)) throw new Error(`Deux chutiers ne peuvent pas porter le nom « ${name} ».`);
+    names.add(normalizedName);
+    return { id, name };
+  });
+}
+
 async function findOrCreateFolder(mediaPool, parent, name) {
   const children = await parent.GetSubFolderList();
   for (const folder of children || []) {
@@ -530,10 +559,12 @@ async function createProject(event, options) {
   const name = normalizeProjectName(options?.projectName);
   const snapshot = scanSnapshots.get(options?.scanId);
   if (!snapshot) throw new Error('Analyse expirée. Reprends la sélection des dossiers.');
+  const folders = normalizeBinConfig(options?.folders);
+  const folderIds = new Set(folders.map((folder) => folder.id));
   const edited = new Map((options.files || []).map((file) => [file.id, file]));
   const selected = snapshot.map((original) => {
     const edit = edited.get(original.id) || {};
-    const category = BIN_NAMES.slice(0, 5).includes(edit.category) ? edit.category : original.category;
+    const category = folderIds.has(edit.category) ? edit.category : original.category;
     const include = edit.include !== false;
     return {
       ...original,
@@ -545,6 +576,7 @@ async function createProject(event, options) {
     };
   }).filter((file) => file.include);
   if (!selected.length) throw new Error('Aucun média à importer.');
+  if (selected.some((file) => !folderIds.has(file.category))) throw new Error('Un média retenu est associé à un chutier supprimé. Reclasse-le avant de créer le projet.');
 
   creationInProgress = true;
   let projectCreated = false;
@@ -570,17 +602,17 @@ async function createProject(event, options) {
     if (!root) throw new Error('Projet créé, mais chutier principal inaccessible.');
 
     const bins = {};
-    for (let index = 0; index < BIN_NAMES.length; index += 1) {
-      const binName = BIN_NAMES[index];
-      bins[binName] = await findOrCreateFolder(mediaPool, root, binName);
-      sendProgress(event, { stage: 'bins', current: index + 1, total: BIN_NAMES.length, label: `Création du chutier ${binName}` });
+    for (let index = 0; index < folders.length; index += 1) {
+      const folder = folders[index];
+      bins[folder.id] = await findOrCreateFolder(mediaPool, root, folder.name);
+      sendProgress(event, { stage: 'bins', current: index + 1, total: folders.length, label: `Création du chutier ${folder.name}` });
     }
 
     const importable = selected.filter((file) => !SEQUENCE.has(file.extension));
     const sequenceFiles = selected.filter((file) => SEQUENCE.has(file.extension));
     const groupMap = new Map();
     for (const file of importable) {
-      let destination = bins[file.category] || bins.Assets;
+      let destination = bins[file.category];
       let key = file.category;
       if (file.category === 'Rushs') {
         const brand = safeBinName(file.cameraBrand, 'À identifier');
@@ -618,10 +650,10 @@ async function createProject(event, options) {
 
     const sequenceFailures = [];
     if (sequenceFiles.length) {
-      const selectedFolder = await mediaPool.SetCurrentFolder(bins.Séquences);
-      if (!selectedFolder) throw new Error('Resolve n’a pas pu sélectionner le chutier Séquences.');
       for (const file of sequenceFiles) {
         try {
+          const selectedFolder = await mediaPool.SetCurrentFolder(bins[file.category]);
+          if (!selectedFolder) throw new Error('Resolve n’a pas pu sélectionner le chutier de destination.');
           const timeline = await mediaPool.ImportTimelineFromFile(file.filePath);
           if (!timeline) sequenceFailures.push(file.name);
         } catch (_) {
@@ -644,7 +676,7 @@ async function createProject(event, options) {
       };
       const settingsApplied = await project.SetSettings(settings);
       if (!settingsApplied) timelineWarning = 'Resolve a gardé ses réglages de timeline par défaut.';
-      const selectedFolder = await mediaPool.SetCurrentFolder(bins.Séquences);
+      const selectedFolder = await mediaPool.SetCurrentFolder(bins.Séquences || root);
       if (!selectedFolder) throw new Error('Resolve n’a pas pu sélectionner le chutier Séquences.');
       timelineName = `${name} — Assemblage`;
       const timeline = await mediaPool.CreateTimelineFromClips(timelineName, importedRushes.map(({ item }) => ({ mediaPoolItem: item })));
@@ -667,7 +699,7 @@ async function createProject(event, options) {
       importedCount: selected.length - failures.length - sequenceFailures.length,
       excludedCount: snapshot.length - selected.length,
       failedNames: [...failures, ...sequenceFailures],
-      createdBins: BIN_NAMES,
+      createdBins: folders.map((folder) => folder.name),
       timelineName,
       timelineFormat,
       warning: [timelineWarning, failures.length ? `${failures.length} média(s) n’ont pas été importés.` : '', sequenceFailures.length ? `${sequenceFailures.length} séquence(s) n’ont pas été importées.` : ''].filter(Boolean).join(' '),
@@ -717,7 +749,7 @@ function registerHandlers() {
     });
     return result.canceled ? [] : result.filePaths;
   });
-  ipcMain.handle('tool:scan-sources', (event, operationId, paths, previousScanId, activePaths, previousFiles) => runOperation(event, operationId, (signal) => scanSources(event, paths, previousScanId, activePaths, previousFiles, signal)));
+  ipcMain.handle('tool:scan-sources', (event, operationId, paths, previousScanId, activePaths, previousFiles, forceRefresh) => runOperation(event, operationId, (signal) => scanSources(event, paths, previousScanId, activePaths, previousFiles, forceRefresh, signal)));
   ipcMain.handle('tool:verify-duplicates', (event, operationId, options) => runOperation(event, operationId, (signal) => verifyDuplicateContents(event, options, signal)));
   ipcMain.handle('tool:cancel-operation', (_event, operationId) => {
     const controller = operations.get(operationId);

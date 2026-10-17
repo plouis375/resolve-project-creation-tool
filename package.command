@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ID="com.idolatry.resolveprojectcreationtool"
 PLUGIN_ROOT="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins"
-VERSION="0.11.0"
-PKG="$ROOT/dist/Resolve-Project-Creation-Tool-v0.11.pkg"
+VERSION="0.12.0"
+PKG="$ROOT/dist/Resolve-Project-Creation-Tool-v0.12.pkg"
 
 "$ROOT/build.command"
 STAGING="$(mktemp -d "$ROOT/work/.rpc-pkg.XXXXXX")"

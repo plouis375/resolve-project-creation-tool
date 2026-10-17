@@ -4,7 +4,7 @@ contextBridge.exposeInMainWorld('projectTool', {
   getStatus: () => ipcRenderer.invoke('tool:status'),
   reconnect: () => ipcRenderer.invoke('tool:reconnect'),
   chooseSources: () => ipcRenderer.invoke('tool:choose-sources'),
-  scanSources: (operationId, paths, previousScanId, activePaths, previousFiles) => ipcRenderer.invoke('tool:scan-sources', operationId, paths, previousScanId, activePaths, previousFiles),
+  scanSources: (operationId, paths, previousScanId, activePaths, previousFiles, forceRefresh) => ipcRenderer.invoke('tool:scan-sources', operationId, paths, previousScanId, activePaths, previousFiles, forceRefresh),
   verifyDuplicates: (operationId, options) => ipcRenderer.invoke('tool:verify-duplicates', operationId, options),
   cancelOperation: (operationId) => ipcRenderer.invoke('tool:cancel-operation', operationId),
   createProject: (options) => ipcRenderer.invoke('tool:create-project', options),

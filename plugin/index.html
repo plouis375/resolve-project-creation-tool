@@ -43,7 +43,7 @@
           <p class="field-note">Le projet sera créé dans le dossier actuellement ouvert dans Resolve.</p>
         </div>
         <div class="bin-preview">
-          <h2>Chutiers du modèle de base</h2>
+          <h2>Structure de départ</h2>
           <div class="bin-list" id="binPreview"></div>
         </div>
         <div class="view-footer">
@@ -61,10 +61,16 @@
           <div class="source-list" id="sourceList" aria-live="polite">
             <div class="source-empty">Ajoute les dossiers qui contiennent tes rushs, musiques et éléments.</div>
           </div>
-          <button class="source-add" id="chooseSources">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-            <span>Ajouter un dossier</span>
-          </button>
+          <div class="source-actions">
+            <button class="source-add" id="chooseSources">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              <span>Ajouter</span>
+            </button>
+            <button class="source-refresh" id="refreshSources" title="Relire tous les dossiers sélectionnés" aria-label="Actualiser les médias" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.7-2L20 12M4 12l2.7 5a7 7 0 0 0 11.7-2"/></svg>
+              <span>Actualiser</span>
+            </button>
+          </div>
         </div>
 
         <div class="table-heading">
@@ -116,13 +122,21 @@
       <section class="view" id="view3" hidden>
         <div class="view-heading">
           <h1>Préparer l’organisation</h1>
-          <p>Vérifie les options. Le classement des médias est prêt à être appliqué dans Resolve.</p>
+          <p>Adapte les chutiers du projet et vérifie les options avant de les créer dans Resolve.</p>
         </div>
+        <section class="bin-editor" aria-labelledby="binEditorTitle">
+          <div class="bin-editor-heading">
+            <div><h2 id="binEditorTitle">Chutiers du projet</h2><p>Renomme, ajoute ou retire les dossiers du Media Pool.</p></div>
+            <button class="button secondary compact" id="addBin" type="button">Ajouter un chutier</button>
+          </div>
+          <div class="bin-editor-list" id="binEditorList"></div>
+          <p class="bin-editor-note" id="binEditorNote" role="status" aria-live="polite">Affecte les médias à l’étape Sources. Un chutier utilisé ne peut pas être supprimé.</p>
+        </section>
         <div class="summary-strip" id="creationSummary"></div>
         <div class="options-list">
           <label class="option-row">
             <span class="option-check"><input id="createTimeline" type="checkbox"><span class="checkmark"></span></span>
-            <span class="option-copy"><strong>Créer une timeline d’assemblage</strong><span>Place tous les rushs retenus bout à bout. Le format suit le format majoritaire ; en cas d’égalité, la timeline passe en 16:9.</span></span>
+            <span class="option-copy"><strong>Créer une timeline d’assemblage</strong><span>Place tous les rushs retenus bout à bout. Elle va dans Séquences si ce chutier est conservé, sinon à la racine du projet. Le format suit le format majoritaire ; en cas d’égalité, la timeline passe en 16:9.</span></span>
             <span class="option-state">Optionnel</span>
           </label>
           <label class="option-row">
@@ -132,11 +146,6 @@
           </label>
           <div class="proxy-scope-note">
             Le générateur traite les médias compatibles de chaque dossier surveillé, y compris ses sous-dossiers, et crée des sous-dossiers <code>proxy</code> près des sources. Il peut donc traiter des médias exclus de la liste ci-dessus.
-          </div>
-          <div class="option-row fixed-option">
-            <span class="folder-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h7l2 2H21v9H3z"/><path d="M3 7.5V6h7l2 2"/></svg></span>
-            <span class="option-copy"><strong>Créer le chutier Exports</strong><span>Le plugin prépare le classement. Les réglages de rendu restent dans Resolve.</span></span>
-            <span class="option-state">Inclus</span>
           </div>
         </div>
         <div class="project-open-note" id="openProjectNote" hidden>
