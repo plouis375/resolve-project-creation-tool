@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+
+PLUGIN_ID="com.idolatry.resolveprojectcreationtool"
+PLUGIN_ROOT="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins"
+BACKUP_ROOT="$3/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/.backups"
+TARGET="$3$2/$PLUGIN_ID"
+MARKER="$3$2/.rpc-install-backup-path"
+
+if [ -f "$TARGET/main.js" ] && [ -f "$TARGET/WorkflowIntegration.node" ] && [ -x "$TARGET/ffprobe" ]; then
+  rm -f "$MARKER"
+  exit 0
+fi
+
+if [ -f "$MARKER" ]; then
+  BACKUP="$(cat "$MARKER")"
+  if [ -e "$TARGET" ]; then mv "$TARGET" "$BACKUP_ROOT/$PLUGIN_ID.failed-install-$(date +%Y%m%d-%H%M%S)-$$"; fi
+  if [ -d "$BACKUP" ]; then mv "$BACKUP" "$TARGET"; fi
+  rm -f "$MARKER"
+fi
+printf 'Resolve Project Creation Tool incomplet; version précédente restaurée si disponible.\n' >&2
+exit 1

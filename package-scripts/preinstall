@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+PLUGIN_ID="com.idolatry.resolveprojectcreationtool"
+PLUGIN_ROOT="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins"
+BACKUP_ROOT="$3/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/.backups"
+TARGET="$3$2/$PLUGIN_ID"
+MARKER="$3$2/.rpc-install-backup-path"
+
+mkdir -p "$3$2"
+if [ -d "$TARGET" ]; then
+  mkdir -p "$BACKUP_ROOT"
+  BACKUP="$BACKUP_ROOT/$PLUGIN_ID-$(date +%Y%m%d-%H%M%S)-$$"
+  mv "$TARGET" "$BACKUP"
+  printf '%s\n' "$BACKUP" > "$MARKER"
+else
+  rm -f "$MARKER"
+fi

@@ -1,4 +1,4 @@
-# Resolve Project Creation Tool — v0.08
+# Resolve Project Creation Tool — v0.09
 
 Assistant macOS intégré à **DaVinci Resolve Studio** pour créer un projet, trier les médias dans le Media Pool et préparer le montage. Il s’ouvre depuis le menu de Resolve, guide la préparation, puis se ferme quand le projet est prêt.
 
@@ -15,10 +15,18 @@ Le plugin a été vérifié avec DaVinci Resolve Studio 21.1.1 sur macOS. Le fon
 
 ## Installation
 
-1. Télécharge et décompresse l’archive de la [dernière version](https://github.com/plouis375/resolve-project-creation-tool/releases/latest).
-2. Ferme DaVinci Resolve.
-3. Ouvre `install.command` depuis le dossier décompressé. L’archive inclut le module Workflow Integration signé par Blackmagic; l’installeur l’utilise directement. Une copie de l’installation précédente est conservée avec le suffixe `.backup-…`.
+### Installeur graphique
+
+1. Télécharge `Resolve-Project-Creation-Tool-v0.09.pkg` depuis la [dernière version](https://github.com/plouis375/resolve-project-creation-tool/releases/latest).
+2. Ferme DaVinci Resolve, puis ouvre le `.pkg` par double-clic et suis les étapes de l’installeur macOS. Il demande un mot de passe administrateur pour copier le plugin dans le dossier partagé de Resolve.
+3. Si macOS bloque le paquet parce qu’il n’est pas signé, ouvre **Réglages Système → Confidentialité et sécurité**, puis choisis **Ouvrir quand même** pour ce paquet. Ce paquet n’est pas signé ni notarié faute de compte développeur Apple.
 4. Rouvre Resolve et choisis **Workspace → Workflow Integrations → Resolve Project Creation Tool**.
+
+### Installation depuis l’archive ZIP
+
+Si tu préfères ne pas utiliser le paquet macOS, télécharge `Resolve-Project-Creation-Tool-v0.09.zip`, décompresse-le, ferme Resolve et ouvre `install.command` par double-clic. Confirme l’ouverture si Gatekeeper le demande, puis saisis ton mot de passe administrateur. Cette méthode conserve aussi une sauvegarde de l’installation précédente.
+
+Une sauvegarde horodatée de la version précédente est conservée dans `.backups`, à l’intérieur du dossier des intégrations Resolve.
 
 Après une mise à jour, redémarre Resolve avant d’ouvrir le plugin. Pour le retirer, ferme Resolve puis lance `uninstall.command`. Cette désinstallation ne supprime pas les projets ni les médias.
 
@@ -81,7 +89,7 @@ Cette option prépare une timeline de départ; elle ne crée pas de montage édi
 
 Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; il peut donc traiter des fichiers qui ont été exclus de la liste d’import du plugin. Les proxies sont écrits dans des sous-dossiers `proxy` à côté des médias. Resolve associe automatiquement les proxies reconnus à leurs originaux. L’outil ne change pas le format, la résolution ni le réglage de démarrage du générateur. Selon ce dernier réglage, le traitement peut démarrer automatiquement à l’ouverture. Les dossiers enregistrés restent surveillés jusqu’à ce que tu les retires dans l’application. L’outil met à jour le fichier de préférences local de Blackmagic Proxy Generator; Blackmagic ne documente pas d’API publique pour cette opération, donc une évolution de son format de préférences pourrait nécessiter une mise à jour du plugin.
 
-## Autres fonctions non disponibles en v0.08
+## Fonctions hors périmètre de la v0.09
 
 - **Archivage** — Aucun archivage de projet n’est proposé; cette fonction n’est pas prévue dans le périmètre actuel.
 - **Dossiers Finder et sauvegarde des médias** — Le plugin organise les chutiers Resolve et conserve les médias à leur emplacement. Il ne crée pas une arborescence disque et ne réalise pas de copie de sauvegarde.
@@ -91,7 +99,7 @@ Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; i
 ## Dépannage
 
 - **Le plugin n’apparaît pas dans Workspace** — Vérifie qu’il a été installé avec DaVinci Resolve Studio, puis redémarre Resolve.
-- **Resolve refuse la connexion** — Ferme puis rouvre Resolve. Si le problème persiste, relance `install.command` depuis l’archive officielle de la version.
+- **Resolve refuse la connexion** — Ferme puis rouvre Resolve. Si le problème persiste, relance le `.pkg` ou `install.command` depuis l’archive officielle de la version.
 - **La caméra est « À identifier »** — Vérifie l’alerte d’analyse, puis corrige la marque et le modèle dans la liste avant de créer le projet. Les XML Canon associés sont lus automatiquement.
 - **Un fichier n’est pas importé** — Consulte le rapport final et vérifie que son volume source est toujours monté et que le format est pris en charge par ta version de Resolve.
 

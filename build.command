@@ -18,7 +18,8 @@ DEST="$DIST_ROOT/com.idolatry.resolveprojectcreationtool"
 mkdir -p "$DIST_ROOT"
 STAGING="$(mktemp -d "$DIST_ROOT/.rpc-tool.XXXXXX")"
 trap 'rm -rf "$STAGING"' EXIT
-ditto "$ROOT/plugin" "$STAGING/plugin"
+cp -R "$ROOT/plugin/." "$STAGING/plugin/"
+chmod 755 "$STAGING/plugin/ffprobe"
 cp "$WORKFLOW_PLUGIN" "$STAGING/plugin/WorkflowIntegration.node"
 
 if [ -e "$DEST" ]; then

@@ -4,11 +4,11 @@
 
 ## Platform
 
-web
+macOS
 
 ## Stack
 
-DaVinci Resolve Studio Workflow Integration plugin, Electron host, vanilla JavaScript and CSS renderer, Blackmagic-signed `WorkflowIntegration.node`, and bundled LGPL FFmpeg `ffprobe`.
+DaVinci Resolve Studio Workflow Integration plugin, Electron host, vanilla JavaScript and CSS renderer, Blackmagic-signed `WorkflowIntegration.node`, bundled LGPL FFmpeg `ffprobe`, and a macOS Installer package.
 
 ## Users
 
@@ -55,7 +55,7 @@ The user wants a clear, restrained, polished interface that feels at home in DaV
 
 - The installed Resolve 21.1.1 developer documentation is available on this Mac at `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/`.
 - A user-supplied sample of seven Canon EOS C70 MXF clips with paired XML sidecars was scanned. The plugin identified the camera model and filtered the sidecars from the sequence list; the user confirmed the Resolve workflow works after installing the corrected v0.02 package.
-- Public release packages include the Blackmagic Workflow Integration module and a minimal universal LGPL `ffprobe`, so users do not need to install the Resolve SDK example or Homebrew.
+- Public macOS releases provide an unsigned, non-notarized graphical `.pkg` installer and a fallback ZIP installer. Packages include the Blackmagic Workflow Integration module and a minimal universal LGPL `ffprobe`, so users do not need to install the Resolve SDK example or Homebrew. The `.pkg` backs up an existing plugin version and validates the installed files, but macOS may show a Gatekeeper warning because there is no Apple Developer ID certificate.
 - Other camera brands and media formats have not been systematically validated.
 
 ## Product Principles

@@ -1,5 +1,11 @@
 # Historique des versions
 
+## v0.09 — 17 octobre 2026
+
+- Ajoute un installeur macOS graphique `.pkg`, à ouvrir par double-clic.
+- Sauvegarde la version déjà installée et la restaure si le paquet ne s’installe pas correctement.
+- Le paquet n’est pas signé ni notarié faute de certificat Apple Developer ID; macOS peut afficher un avertissement.
+
 ## v0.08 — 17 octobre 2026
 
 - Ajoute une comparaison SHA-256 facultative pour confirmer les doublons probables repérés par nom, taille et durée.
