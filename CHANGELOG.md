@@ -1,5 +1,11 @@
 # Historique des versions
 
+## v0.15 — 17 octobre 2026
+
+- Permet de choisir indépendamment la résolution et la fréquence d’images de la timeline d’assemblage.
+- Propose des formats HD, Full HD, DCI, Ultra HD, vertical et carré, ainsi que des fréquences de 23,976 à 60 i/s.
+- Conserve la détection automatique comme valeur initiale et signale si Resolve ne confirme pas les réglages demandés.
+
 ## v0.14 — 17 octobre 2026
 
 - Remplace l’interface sombre par la direction « Brutalisme graphique » choisie : papier clair, typographie affirmée, traits noirs et accent corail.

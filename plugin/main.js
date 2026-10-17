@@ -709,13 +709,33 @@ async function createProject(event, options) {
     let timelineWarning = '';
     if (options.createTimeline && importedRushes.length) {
       const dominant = dominantFormat(importedRushes.map(({ file }) => file));
+      const resolutions = new Set(['1280x720', '1920x1080', '2048x1080', '3840x2160', '4096x2160', '1080x1920', '1080x1080']);
+      const frameRates = new Set(['23.976', '24', '25', '29.97', '30', '50', '59.94', '60']);
+      const requestedResolution = resolutions.has(options.timelineResolution) ? options.timelineResolution : 'auto';
+      const requestedFrameRate = frameRates.has(String(options.timelineFrameRate)) ? String(options.timelineFrameRate) : 'auto';
+      const [width, height] = requestedResolution === 'auto'
+        ? [dominant.width, dominant.height]
+        : requestedResolution.split('x').map(Number);
+      const fps = requestedFrameRate === 'auto' ? dominant.fps || 24 : Number(requestedFrameRate);
       const settings = {
-        timelineResolutionWidth: String(dominant.width),
-        timelineResolutionHeight: String(dominant.height),
-        timelineFrameRate: String(dominant.fps || 24)
+        timelineResolutionWidth: String(width),
+        timelineResolutionHeight: String(height),
+        timelineFrameRate: String(fps)
       };
       const settingsApplied = await project.SetSettings(settings);
-      if (!settingsApplied) timelineWarning = 'Resolve a gardé ses réglages de timeline par défaut.';
+      let reportedWidth = width;
+      let reportedHeight = height;
+      let reportedFps = fps;
+      if (!settingsApplied) {
+        timelineWarning = 'Resolve n’a pas confirmé les réglages de timeline demandés. Vérifie le format dans Resolve.';
+        try {
+          reportedWidth = Number(await project.GetSetting('timelineResolutionWidth')) || 0;
+          reportedHeight = Number(await project.GetSetting('timelineResolutionHeight')) || 0;
+          reportedFps = Number(await project.GetSetting('timelineFrameRate')) || 0;
+        } catch (_) {
+          reportedWidth = reportedHeight = reportedFps = 0;
+        }
+      }
       const selectedFolder = await mediaPool.SetCurrentFolder(bins.Séquences || root);
       if (!selectedFolder) throw new Error('Resolve n’a pas pu sélectionner le chutier Séquences.');
       timelineName = `${name} — Assemblage`;
@@ -724,7 +744,9 @@ async function createProject(event, options) {
         timelineName = '';
         timelineWarning = 'Resolve n’a pas créé la timeline. Le projet et les médias sont conservés.';
       } else {
-        timelineFormat = `${dominant.width} × ${dominant.height} · ${dominant.fps || 24} i/s`;
+        timelineFormat = reportedWidth && reportedHeight && reportedFps
+          ? `${reportedWidth} × ${reportedHeight} · ${reportedFps} i/s`
+          : 'Format à vérifier dans Resolve';
       }
     } else if (options.createTimeline) {
       timelineWarning = 'Aucun rush vidéo retenu. La timeline d’assemblage n’a pas été créée.';

@@ -726,6 +726,8 @@ async function createProjectNow() {
       projectName: name,
       scanId: state.scanId,
       createTimeline: $('createTimeline').checked,
+      timelineResolution: $('timelineResolution').value,
+      timelineFrameRate: $('timelineFrameRate').value,
       folders: state.folders.map(({ id, name }) => ({ id, name })),
       files: state.files.map(({ id, category, cameraBrand, cameraModel, shootingDate, include }) => ({ id, category, cameraBrand, cameraModel, shootingDate, include }))
     });
@@ -790,6 +792,9 @@ $('cameraMergeList').addEventListener('click', (event) => {
   if (suggestion) applyCameraMerge(suggestion);
 });
 $('projectName').addEventListener('input', renderStructurePreview);
+$('createTimeline').addEventListener('change', (event) => {
+  $('timelineControls').hidden = !event.target.checked;
+});
 $('backToSources').addEventListener('click', () => setStep(2));
 $('chooseSources').addEventListener('click', chooseSources);
 $('refreshSources').addEventListener('click', refreshSources);

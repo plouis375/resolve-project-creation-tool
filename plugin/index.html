@@ -152,9 +152,33 @@
         <div class="options-list">
           <label class="option-row">
             <span class="option-check"><input id="createTimeline" type="checkbox"><span class="checkmark"></span></span>
-            <span class="option-copy"><strong>Créer une timeline d’assemblage</strong><span>Place tous les rushs retenus bout à bout. Elle va dans Séquences si ce chutier est conservé, sinon à la racine du projet. Le format suit le format majoritaire ; en cas d’égalité, la timeline passe en 16:9.</span></span>
+            <span class="option-copy"><strong>Créer une timeline d’assemblage</strong><span>Place tous les rushs retenus bout à bout. Elle va dans Séquences si ce chutier est conservé, sinon à la racine du projet.</span></span>
             <span class="option-state">Optionnel</span>
           </label>
+          <div class="timeline-controls" id="timelineControls" hidden>
+            <label class="timeline-field"><span>Résolution</span><select id="timelineResolution">
+              <option value="auto">Automatique · format majoritaire</option>
+              <option value="1280x720">HD · 1280 × 720</option>
+              <option value="1920x1080">Full HD · 1920 × 1080</option>
+              <option value="2048x1080">2K DCI · 2048 × 1080</option>
+              <option value="3840x2160">Ultra HD · 3840 × 2160</option>
+              <option value="4096x2160">4K DCI · 4096 × 2160</option>
+              <option value="1080x1920">Vertical · 1080 × 1920</option>
+              <option value="1080x1080">Carré · 1080 × 1080</option>
+            </select></label>
+            <label class="timeline-field"><span>Fréquence d’images</span><select id="timelineFrameRate">
+              <option value="auto">Automatique · format majoritaire</option>
+              <option value="23.976">23,976 i/s</option>
+              <option value="24">24 i/s</option>
+              <option value="25">25 i/s</option>
+              <option value="29.97">29,97 i/s</option>
+              <option value="30">30 i/s</option>
+              <option value="50">50 i/s</option>
+              <option value="59.94">59,94 i/s</option>
+              <option value="60">60 i/s</option>
+            </select></label>
+            <p class="timeline-note">En automatique, l’assistant reprend le format principal des rushs. S’il n’y a pas de format majoritaire, il propose du 1920 × 1080 à 24 i/s.</p>
+          </div>
           <label class="option-row">
             <span class="option-check"><input id="prepareProxies" type="checkbox"><span class="checkmark"></span></span>
             <span class="option-copy"><strong>Préparer la génération de proxies</strong><span>À la fin, les dossiers sources seront ajoutés à la surveillance, puis Blackmagic Proxy Generator s’ouvrira. Tu choisiras le format et la résolution dans cette application.</span></span>
