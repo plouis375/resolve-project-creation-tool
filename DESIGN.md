@@ -4,13 +4,14 @@
 
 Resolve Project Creation Tool is a temporary four-step setup assistant opened from Resolve Studio's Workflow Integrations menu. It closes after setup so the editor can continue in Resolve.
 
-## Approved visual reference
+## Approved visual direction
 
-Build the flow from `.impeccable/mocks/decision/creation-tool-sources.png`. The user approved this dark, restrained Resolve-inspired direction.
+The user selected “Brutalisme graphique” for the complete assistant. Use warm paper surfaces, heavy black rules and typography, square controls, hard offset shadows, and vivid coral for primary actions. Keep the layout and content focused on creating a Resolve project; do not add unrelated decoration.
 
 ## Interface rules
 
-- Use graphite surfaces, quiet separators, readable system sans-serif text, and Resolve red for active steps and the primary action.
+- Use warm off-white surfaces, strong black separators, readable system sans-serif text, and coral for active steps and the primary action.
+- Use uppercase, heavy headings and square-edged controls. Reserve hard shadows for interactive panels and primary groupings.
 - Keep media classification dense but scannable. Use editable controls for category, camera brand, model, and shooting date.
 - Keep errors and metadata uncertainty beside the affected step. Do not imply a failed metadata read means Resolve cannot decode the file.
 - Make optional timeline setup clear. Present proxy preparation as a handoff to Blackmagic Proxy Generator; do not suggest the plugin generates proxies itself.

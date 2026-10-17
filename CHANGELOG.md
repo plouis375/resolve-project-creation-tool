@@ -1,5 +1,11 @@
 # Historique des versions
 
+## v0.14 — 17 octobre 2026
+
+- Remplace l’interface sombre par la direction « Brutalisme graphique » choisie : papier clair, typographie affirmée, traits noirs et accent corail.
+- Applique le nouveau style aux quatre étapes, aux tableaux, aux alertes, aux contrôles et à l’écran final.
+- Laisse le nom du projet vide au démarrage et affiche « Nom du projet » comme indication de saisie.
+
 ## v0.13 — 17 octobre 2026
 
 - Permet d’enregistrer localement une structure de chutiers préférée et de rétablir le modèle de base.
