@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Resolve Project Creation Tool</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <strong>Resolve Project Creation Tool</strong>
+        <span class="slash">/</span>
+        <span class="topbar-context">Préparer un nouveau projet</span>
+      </div>
+      <button class="icon-button" id="closeTop" aria-label="Fermer l’assistant" title="Fermer l’assistant">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
+      </button>
+    </header>
+
+    <nav class="stepper" aria-label="Étapes de création">
+      <button class="step active" data-step="1" aria-current="step"><span class="step-dot"></span><span>Projet</span></button>
+      <span class="step-line"></span>
+      <button class="step" data-step="2"><span class="step-dot"></span><span>Sources</span></button>
+      <span class="step-line"></span>
+      <button class="step" data-step="3"><span class="step-dot"></span><span>Organisation</span></button>
+      <span class="step-line"></span>
+      <button class="step" data-step="4"><span class="step-dot"></span><span>Terminé</span></button>
+    </nav>
+
+    <main class="content">
+      <section class="view" id="view1">
+        <div class="view-heading">
+          <h1>Créer un nouveau projet</h1>
+          <p>Choisis un nom. Le modèle de base prépare les chutiers Resolve habituels.</p>
+        </div>
+        <div class="form-panel">
+          <label class="field-label" for="projectName">Nom du projet</label>
+          <input id="projectName" class="text-field" type="text" maxlength="100" value="Campagne Nike 2026" autocomplete="off" spellcheck="false">
+          <p class="field-note">Le projet sera créé dans le dossier actuellement ouvert dans Resolve.</p>
+        </div>
+        <div class="bin-preview">
+          <h2>Chutiers du modèle de base</h2>
+          <div class="bin-list" id="binPreview"></div>
+        </div>
+        <div class="view-footer">
+          <div class="connection-wrap"><span class="muted" id="connectionState">Connexion à Resolve…</span><button class="button secondary compact" id="retryConnection" hidden>Reconnecter</button></div>
+          <button class="button primary" id="toSources">Continuer</button>
+        </div>
+      </section>
+
+      <section class="view" id="view2" hidden>
+        <div class="view-heading">
+          <h1>Sélectionner les médias</h1>
+          <p>Les fichiers resteront à leur emplacement d’origine.</p>
+        </div>
+        <div class="source-row">
+          <div class="source-list" id="sourceList" aria-live="polite">
+            <div class="source-empty">Ajoute les dossiers qui contiennent tes rushs, musiques et éléments.</div>
+          </div>
+          <button class="source-add" id="chooseSources">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            <span>Ajouter un dossier</span>
+          </button>
+        </div>
+
+        <div class="table-heading">
+          <div>
+            <h2>Aperçu du classement</h2>
+            <span class="review-count" id="reviewCount" hidden>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8 18 17H2L10 2.8Z"/><path d="M10 7v4.5M10 14.2v.1"/></svg>
+              <span id="reviewLabel">0 élément à vérifier</span>
+            </span>
+          </div>
+          <div class="table-tools" id="tableTools" hidden>
+            <label class="search-field">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+              <input id="filterInput" type="search" placeholder="Rechercher un fichier" aria-label="Rechercher un fichier">
+            </label>
+            <label class="check-label"><input id="hideDuplicates" type="checkbox" checked><span>Ignorer doublons probables</span></label>
+          </div>
+        </div>
+
+        <div class="media-table-wrap" id="tableWrap" hidden>
+          <table class="media-table">
+            <thead><tr><th class="file-col">Fichier</th><th class="type-col">Type proposé</th><th class="destination-col">Classement dans Resolve</th><th class="size-col">Taille</th><th class="duration-col">Durée</th><th class="include-col"><span class="sr-only">Inclure</span></th></tr></thead>
+            <tbody id="mediaRows"></tbody>
+          </table>
+        </div>
+        <div class="scan-progress" id="scanProgress" hidden>
+          <div class="progress-track"><span id="progressBar"></span></div>
+          <span id="progressText">Analyse des médias…</span>
+        </div>
+        <div class="source-warning" id="probeWarning" hidden>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8 18 17H2L10 2.8Z"/><path d="M10 7v4.5M10 14.2v.1"/></svg>
+          <span>Analyse détaillée indisponible. Les catégories restent modifiables et les durées peuvent manquer.</span>
+        </div>
+        <div class="view-footer">
+          <span class="muted" id="mediaSummary">Aucun dossier sélectionné</span>
+          <div class="footer-actions"><button class="button secondary" id="backToProject">Précédent</button><button class="button primary" id="toOptions" disabled>Continuer</button></div>
+        </div>
+      </section>
+
+      <section class="view" id="view3" hidden>
+        <div class="view-heading">
+          <h1>Préparer l’organisation</h1>
+          <p>Vérifie les options. Le classement des médias est prêt à être appliqué dans Resolve.</p>
+        </div>
+        <div class="summary-strip" id="creationSummary"></div>
+        <div class="options-list">
+          <label class="option-row">
+            <span class="option-check"><input id="createTimeline" type="checkbox"><span class="checkmark"></span></span>
+            <span class="option-copy"><strong>Créer une timeline d’assemblage</strong><span>Place tous les rushs retenus bout à bout. Le format suit le format majoritaire ; en cas d’égalité, la timeline passe en 16:9.</span></span>
+            <span class="option-state">Optionnel</span>
+          </label>
+          <div class="option-row disabled-option">
+            <span class="option-check"><input type="checkbox" disabled aria-label="Génération de proxies indisponible"><span class="checkmark"></span></span>
+            <span class="option-copy"><strong>Générer des proxies</strong><span>Resolve expose l’association de proxies, mais pas leur génération dans son API de workflow.</span></span>
+            <span class="option-state unavailable">Indisponible en V1</span>
+          </div>
+          <div class="option-row fixed-option">
+            <span class="folder-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h7l2 2H21v9H3z"/><path d="M3 7.5V6h7l2 2"/></svg></span>
+            <span class="option-copy"><strong>Créer le chutier Exports</strong><span>Le plugin prépare le classement. Les réglages de rendu restent dans Resolve.</span></span>
+            <span class="option-state">Inclus</span>
+          </div>
+        </div>
+        <div class="project-open-note" id="openProjectNote" hidden>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4M10 6.5v.1"/></svg>
+          <span id="openProjectText"></span>
+        </div>
+        <div class="scan-progress create-progress" id="createProgress" hidden>
+          <div class="progress-track"><span id="createProgressBar"></span></div>
+          <span id="createProgressText">Préparation dans Resolve…</span>
+        </div>
+        <div class="view-footer">
+          <span class="muted" id="finalMediaSummary"></span>
+          <div class="footer-actions"><button class="button secondary" id="backToSources">Précédent</button><button class="button primary" id="createNow">Créer le projet</button></div>
+        </div>
+      </section>
+
+      <section class="view completion-view" id="view4" hidden>
+        <div class="completion-mark" id="completionMark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m7 16 6 6L25 10"/></svg></div>
+        <h1 id="completionTitle">Projet prêt</h1>
+        <p class="completion-subtitle" id="completionSubtitle"></p>
+        <div class="completion-report" id="completionReport"></div>
+        <p class="completion-warning" id="completionWarning" hidden></p>
+        <div class="completion-footer"><span class="muted">Tu peux fermer cet assistant et commencer le montage.</span><button class="button primary" id="finish">Fermer et passer au montage</button></div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>
