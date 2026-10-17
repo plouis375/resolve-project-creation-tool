@@ -1,4 +1,4 @@
-# Resolve Project Creation Tool — V1
+# Resolve Project Creation Tool — v0.01
 
 Assistant intégré à DaVinci Resolve Studio pour créer un projet, organiser ses chutiers, puis passer au montage.
 
@@ -21,7 +21,7 @@ Le plugin est enregistré dans le dossier standard des Workflow Integration Plug
 - Enregistre le projet actuellement ouvert avant de créer le nouveau projet.
 - Termine avec un rapport court et un bouton qui ouvre la page Edit et ferme l’assistant.
 
-## Limites V1
+## Limites v0.01
 
 - La génération de proxies reste désactivée. L’API installée permet d’associer un proxy existant, mais ne fournit pas d’action prise en charge pour générer les proxies.
 - `ffprobe` améliore la lecture des durées, formats et métadonnées caméra. Sans `ffprobe`, macOS Spotlight fournit un repli partiel et les champs de classement restent modifiables.
@@ -34,3 +34,7 @@ Le plugin est enregistré dans le dossier standard des Workflow Integration Plug
 - Paquet préparé pour Resolve : `dist/com.idolatry.resolveprojectcreationtool/`
 - `build.command` recopie la version de `WorkflowIntegration.node` fournie avec Resolve Studio installé sur ce Mac.
 - `uninstall.command` retire uniquement l’intégration Resolve Project Creation Tool.
+
+## Versions
+
+Chaque modification publiée reçoit un numéro `v0.xx`, inscrit dans le manifeste Resolve, `package.json`, un tag Git et une release GitHub.

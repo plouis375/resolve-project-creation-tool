@@ -1,6 +1,6 @@
 {
   "name": "resolve-project-creation-tool",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Assistant de création de projet pour DaVinci Resolve Studio",
   "main": "main.js"
 }
