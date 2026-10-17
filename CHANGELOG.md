@@ -1,5 +1,11 @@
 # Historique des versions
 
+## v0.07 — 17 octobre 2026
+
+- L’installeur utilise d’abord le module Workflow Integration fourni dans l’archive; le SDK local ne sert plus que de repli pour le dépôt de développement.
+- Inclut `ffprobe` universel Intel/Apple Silicon, compilé sans composants GPL et sans dépendance Homebrew.
+- Ajoute les mentions LGPL et publie les sources FFmpeg correspondantes avec la release.
+
 ## v0.06 — 17 octobre 2026
 
 - Classe les alertes de contrôle par type et permet d’afficher rapidement les fichiers concernés.

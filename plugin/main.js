@@ -54,7 +54,7 @@ async function connectResolve() {
 
 async function findFFprobe() {
   if (ffprobePath !== undefined) return ffprobePath;
-  for (const candidate of [...PROBE_PATHS, ...((process.env.PATH || '').split(path.delimiter).map((dir) => path.join(dir, 'ffprobe')))]) {
+  for (const candidate of [path.join(__dirname, 'ffprobe'), ...PROBE_PATHS, ...((process.env.PATH || '').split(path.delimiter).map((dir) => path.join(dir, 'ffprobe')))]) {
     try {
       await fs.access(candidate);
       ffprobePath = candidate;

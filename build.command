@@ -3,19 +3,23 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SDK_PLUGIN="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Workflow Integrations/Examples/SamplePlugin/WorkflowIntegration.node"
-DIST_ROOT="$ROOT/dist"
-DEST="$DIST_ROOT/com.idolatry.resolveprojectcreationtool"
-
-if [ ! -f "$SDK_PLUGIN" ]; then
-  printf 'Resolve SDK plug-in module not found:\n%s\n' "$SDK_PLUGIN" >&2
+BUNDLED_PLUGIN="$ROOT/plugin/WorkflowIntegration.node"
+if [ -f "$BUNDLED_PLUGIN" ]; then
+  WORKFLOW_PLUGIN="$BUNDLED_PLUGIN"
+elif [ -f "$SDK_PLUGIN" ]; then
+  WORKFLOW_PLUGIN="$SDK_PLUGIN"
+else
+  printf 'Module Workflow Integration introuvable dans l’archive et dans Resolve.\n' >&2
   exit 1
 fi
+DIST_ROOT="$ROOT/dist"
+DEST="$DIST_ROOT/com.idolatry.resolveprojectcreationtool"
 
 mkdir -p "$DIST_ROOT"
 STAGING="$(mktemp -d "$DIST_ROOT/.rpc-tool.XXXXXX")"
 trap 'rm -rf "$STAGING"' EXIT
 ditto "$ROOT/plugin" "$STAGING/plugin"
-cp "$SDK_PLUGIN" "$STAGING/plugin/WorkflowIntegration.node"
+cp "$WORKFLOW_PLUGIN" "$STAGING/plugin/WorkflowIntegration.node"
 
 if [ -e "$DEST" ]; then
   rm -rf "$DEST"

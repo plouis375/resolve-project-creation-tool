@@ -1,4 +1,4 @@
-# Resolve Project Creation Tool — v0.06
+# Resolve Project Creation Tool — v0.07
 
 Assistant macOS intégré à **DaVinci Resolve Studio** pour créer un projet, trier les médias dans le Media Pool et préparer le montage. Il s’ouvre depuis le menu de Resolve, guide la préparation, puis se ferme quand le projet est prêt.
 
@@ -9,7 +9,7 @@ Assistant macOS intégré à **DaVinci Resolve Studio** pour créer un projet, t
 - macOS et DaVinci Resolve Studio installés.
 - Une bibliothèque de projets Resolve accessible.
 - Les médias source accessibles depuis ce Mac, sur disque local ou volume monté.
-- `ffprobe` est recommandé pour lire les durées, les formats vidéo et les métadonnées. Sans lui, l’outil tente un repli partiel avec Spotlight.
+- `ffprobe` est inclus dans l’archive, en version universelle Intel et Apple Silicon; aucune installation supplémentaire n’est nécessaire. Si cet outil ne peut pas être lancé, l’application essaie aussi une analyse partielle avec Spotlight.
 
 Le plugin a été vérifié avec DaVinci Resolve Studio 21.1.1 sur macOS. Le fonctionnement peut varier avec d’autres versions de Resolve.
 
@@ -17,7 +17,7 @@ Le plugin a été vérifié avec DaVinci Resolve Studio 21.1.1 sur macOS. Le fon
 
 1. Télécharge et décompresse l’archive de la [dernière version](https://github.com/plouis375/resolve-project-creation-tool/releases/latest).
 2. Ferme DaVinci Resolve.
-3. Ouvre `install.command` depuis le dossier décompressé. Le script prépare le plugin avec le module Workflow Integration fourni par l’installation locale de Resolve Studio, puis l’installe. Une copie de l’installation précédente est conservée avec le suffixe `.backup-…`.
+3. Ouvre `install.command` depuis le dossier décompressé. L’archive inclut le module Workflow Integration signé par Blackmagic; l’installeur l’utilise directement. Une copie de l’installation précédente est conservée avec le suffixe `.backup-…`.
 4. Rouvre Resolve et choisis **Workspace → Workflow Integrations → Resolve Project Creation Tool**.
 
 Après une mise à jour, redémarre Resolve avant d’ouvrir le plugin. Pour le retirer, ferme Resolve puis lance `uninstall.command`. Cette désinstallation ne supprime pas les projets ni les médias.
@@ -61,7 +61,7 @@ Les sous-dossiers `Proxy` créés par Blackmagic Proxy Generator sont ignorés p
 
 Les fichiers cachés sont ignorés. Quand un fichier vidéo Canon possède un XML homonyme à côté de lui, ce XML est traité comme une fiche de métadonnées : sa marque et son modèle peuvent servir au classement, et il n’apparaît pas comme séquence à importer. Les XML sans vidéo associée restent considérés comme des séquences.
 
-L’analyse utilise d’abord les métadonnées lues par `ffprobe`. Les champs de caméra non détectés restent modifiables avant la création. Pour la date, l’outil utilise les métadonnées disponibles, puis la date de création du fichier comme repli. Une date de repli est signalée.
+L’analyse utilise d’abord le `ffprobe` inclus dans l’archive pour lire les durées, les formats et les métadonnées de plusieurs conteneurs courants. Les champs de caméra non détectés restent modifiables avant la création. Pour la date, l’outil utilise les métadonnées disponibles, puis la date de création du fichier comme repli. Une date de repli est signalée. Le binaire est une compilation FFmpeg LGPL sans modules GPL; les mentions, la licence et le lien vers le code source correspondant se trouvent dans `plugin/FFmpeg-NOTICE.md`.
 
 ## Doublons et vérifications
 
@@ -81,7 +81,7 @@ Cette option prépare une timeline de départ; elle ne crée pas de montage édi
 
 Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; il peut donc traiter des fichiers qui ont été exclus de la liste d’import du plugin. Les proxies sont écrits dans des sous-dossiers `proxy` à côté des médias. Resolve associe automatiquement les proxies reconnus à leurs originaux. L’outil ne change pas le format, la résolution ni le réglage de démarrage du générateur. Selon ce dernier réglage, le traitement peut démarrer automatiquement à l’ouverture. Les dossiers enregistrés restent surveillés jusqu’à ce que tu les retires dans l’application. L’outil met à jour le fichier de préférences local de Blackmagic Proxy Generator; Blackmagic ne documente pas d’API publique pour cette opération, donc une évolution de son format de préférences pourrait nécessiter une mise à jour du plugin.
 
-## Autres fonctions non disponibles en v0.06
+## Autres fonctions non disponibles en v0.07
 
 - **Archivage** — Aucun archivage de projet n’est proposé; cette fonction n’est pas prévue dans le périmètre actuel.
 - **Dossiers Finder et sauvegarde des médias** — Le plugin organise les chutiers Resolve et conserve les médias à leur emplacement. Il ne crée pas une arborescence disque et ne réalise pas de copie de sauvegarde.
@@ -92,7 +92,7 @@ Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; i
 
 - **Le plugin n’apparaît pas dans Workspace** — Vérifie qu’il a été installé avec DaVinci Resolve Studio, puis redémarre Resolve.
 - **Resolve refuse la connexion** — Ferme puis rouvre Resolve. Si le problème persiste, relance `install.command` depuis l’archive officielle de la version.
-- **La caméra est « À identifier »** — Vérifie que `ffprobe` est disponible, puis corrige la marque et le modèle dans la liste avant de créer le projet. Les XML Canon associés sont lus automatiquement.
+- **La caméra est « À identifier »** — Vérifie l’alerte d’analyse, puis corrige la marque et le modèle dans la liste avant de créer le projet. Les XML Canon associés sont lus automatiquement.
 - **Un fichier n’est pas importé** — Consulte le rapport final et vérifie que son volume source est toujours monté et que le format est pris en charge par ta version de Resolve.
 
 ## Développement et versions
@@ -100,4 +100,4 @@ Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; i
 - Code source du plugin : [`plugin/`](plugin/)
 - Historique des changements : [`CHANGELOG.md`](CHANGELOG.md)
 - Chaque nouvelle version du plugin reçoit un numéro `v0.xx`, inscrit dans le manifeste et le paquet, puis publié comme tag et release GitHub.
-- Le paquet local est préparé par `build.command`; il utilise le module `WorkflowIntegration.node` livré avec l’installation de Resolve Studio.
+- L’archive de release contient `WorkflowIntegration.node` signé par Blackmagic et `ffprobe` universel. Depuis le dépôt de développement, `build.command` peut encore reprendre le module Workflow Integration depuis l’installation locale de Resolve.
