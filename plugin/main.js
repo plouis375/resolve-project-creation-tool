@@ -16,6 +16,7 @@ const GRAPHIC = new Set(['.psd', '.ai', '.eps', '.svg', '.pdf']);
 const SEQUENCE = new Set(['.fcpxml', '.edl', '.aaf', '.drt', '.otio', '.xml']);
 const SUPPORTED = new Set([...VIDEO, ...AUDIO, ...STILL, ...GRAPHIC, ...SEQUENCE]);
 const PROBE_PATHS = ['/opt/homebrew/bin/ffprobe', '/usr/local/bin/ffprobe', '/usr/bin/ffprobe'];
+const PROXY_GENERATOR_APP = '/Applications/Blackmagic Proxy Generator.app';
 
 let mainWindow;
 let resolveObj;
@@ -554,6 +555,15 @@ function registerHandlers() {
   });
   ipcMain.handle('tool:scan-sources', (event, paths) => scanSources(event, paths));
   ipcMain.handle('tool:create-project', (event, options) => createProject(event, options));
+  ipcMain.handle('tool:open-proxy-generator', async () => {
+    try {
+      await fs.access(PROXY_GENERATOR_APP);
+      await execFileAsync('/usr/bin/open', ['-a', PROXY_GENERATOR_APP]);
+      return true;
+    } catch (_) {
+      throw new Error('Blackmagic Proxy Generator est introuvable dans cette installation de Resolve.');
+    }
+  });
   ipcMain.handle('tool:finish', async () => {
     if (integrationReady && resolveObj) {
       try { await resolveObj.OpenPage('edit'); } catch (_) {}

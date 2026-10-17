@@ -304,6 +304,9 @@ function renderCompletion(result) {
   const warningParts = [result.warning, result.failedNames?.length ? `À vérifier : ${result.failedNames.slice(0, 6).join(', ')}${result.failedNames.length > 6 ? ` et ${result.failedNames.length - 6} autre(s)` : ''}.` : ''];
   $('completionWarning').textContent = warningParts.filter(Boolean).join(' ');
   $('completionWarning').hidden = !hasWarning;
+  const showProxyGuide = $('prepareProxies').checked;
+  $('proxyGuide').hidden = !showProxyGuide;
+  $('proxySourceList').innerHTML = state.sourcePaths.map((source) => `<li>${escapeHTML(source)}</li>`).join('');
 }
 
 async function createProjectNow() {
@@ -360,6 +363,18 @@ document.querySelectorAll('.step').forEach((button) => button.addEventListener('
 }));
 $('closeTop').addEventListener('click', () => window.projectTool.close());
 $('finish').addEventListener('click', () => window.projectTool.finish());
+$('openProxyGenerator').addEventListener('click', async () => {
+  const button = $('openProxyGenerator');
+  button.disabled = true;
+  try {
+    await window.projectTool.openProxyGenerator();
+    showToast('Blackmagic Proxy Generator est ouvert. Ajoute les dossiers affichés comme dossiers surveillés.');
+  } catch (error) {
+    showToast(error.message || 'Impossible d’ouvrir Blackmagic Proxy Generator.');
+  } finally {
+    button.disabled = false;
+  }
+});
 $('toSources').addEventListener('click', () => setStep(2));
 $('backToProject').addEventListener('click', () => setStep(1));
 $('toOptions').addEventListener('click', () => setStep(3));

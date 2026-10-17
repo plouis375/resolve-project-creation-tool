@@ -116,10 +116,13 @@
             <span class="option-copy"><strong>Créer une timeline d’assemblage</strong><span>Place tous les rushs retenus bout à bout. Le format suit le format majoritaire ; en cas d’égalité, la timeline passe en 16:9.</span></span>
             <span class="option-state">Optionnel</span>
           </label>
-          <div class="option-row disabled-option">
-            <span class="option-check"><input type="checkbox" disabled aria-label="Génération de proxies indisponible"><span class="checkmark"></span></span>
-            <span class="option-copy"><strong>Générer des proxies</strong><span>Resolve expose l’association de proxies, mais pas leur génération dans son API de workflow.</span></span>
-            <span class="option-state unavailable">Indisponible en v0.02</span>
+          <label class="option-row">
+            <span class="option-check"><input id="prepareProxies" type="checkbox"><span class="checkmark"></span></span>
+            <span class="option-copy"><strong>Préparer la génération de proxies</strong><span>L’écran final proposera d’ouvrir Blackmagic Proxy Generator. Tu choisiras les dossiers surveillés, le format et la résolution dans cette application.</span></span>
+            <span class="option-state">Optionnel</span>
+          </label>
+          <div class="proxy-scope-note">
+            Le générateur traite les médias compatibles de chaque dossier surveillé, y compris ses sous-dossiers, et crée des sous-dossiers <code>proxy</code> près des sources. Il peut donc traiter des médias exclus de la liste ci-dessus.
           </div>
           <div class="option-row fixed-option">
             <span class="folder-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h7l2 2H21v9H3z"/><path d="M3 7.5V6h7l2 2"/></svg></span>
@@ -147,6 +150,13 @@
         <p class="completion-subtitle" id="completionSubtitle"></p>
         <div class="completion-report" id="completionReport"></div>
         <p class="completion-warning" id="completionWarning" hidden></p>
+        <section class="proxy-guide" id="proxyGuide" hidden>
+          <h2>Terminer la préparation des proxies</h2>
+          <p>Dans Blackmagic Proxy Generator, ajoute les dossiers voulus comme dossiers surveillés, choisis le format et la résolution, puis démarre la génération.</p>
+          <ul id="proxySourceList" class="proxy-source-list"></ul>
+          <p class="proxy-path-note">Le générateur crée les proxies dans des sous-dossiers <code>proxy</code> près des médias. Resolve les associe automatiquement quand il reconnaît les originaux.</p>
+          <button class="button secondary" id="openProxyGenerator">Ouvrir Blackmagic Proxy Generator</button>
+        </section>
         <div class="completion-footer"><span class="muted">Tu peux fermer cet assistant et commencer le montage.</span><button class="button primary" id="finish">Fermer et passer au montage</button></div>
       </section>
     </main>

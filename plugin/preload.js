@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('projectTool', {
   chooseSources: () => ipcRenderer.invoke('tool:choose-sources'),
   scanSources: (paths) => ipcRenderer.invoke('tool:scan-sources', paths),
   createProject: (options) => ipcRenderer.invoke('tool:create-project', options),
+  openProxyGenerator: () => ipcRenderer.invoke('tool:open-proxy-generator'),
   finish: () => ipcRenderer.invoke('tool:finish'),
   close: () => ipcRenderer.invoke('tool:close'),
   onProgress: (callback) => {

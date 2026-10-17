@@ -1,5 +1,10 @@
 # Historique des versions
 
+## v0.03 — 17 octobre 2026
+
+- Ajoute une option facultative avec guide et bouton pour ouvrir l’application Blackmagic Proxy Generator depuis l’écran final.
+- Affiche les dossiers sources et rappelle que le générateur travaille par dossier surveillé, avec création des proxies près des médias.
+
 ## v0.02 — 17 octobre 2026
 
 - Lit la marque et le modèle depuis les sidecars XML Canon.
