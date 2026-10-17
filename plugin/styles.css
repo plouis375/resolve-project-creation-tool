@@ -128,6 +128,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
 .review-filter span { color: #f0bd61; font-variant-numeric: tabular-nums; }
 .review-filter:hover,.review-filter.active { border-color: #8b713f; background: #28231b; color: #f3d28e; }
 .review-explanation { margin: 0 0 8px; color: var(--secondary); font-size: 11px; line-height: 1.4; }
+.duplicate-tools { display: flex; align-items: center; gap: 10px; padding: 0 0 8px; color: var(--secondary); font-size: 11px; }
 .row-toggle { width: 14px; height: 14px; accent-color: var(--red); cursor: pointer; }
 .duplicate-row { background: #201c18; }
 .empty-filter { padding: 32px !important; color: var(--secondary) !important; text-align: center; }

@@ -84,6 +84,11 @@
           </div>
         </div>
         <div class="review-filters" id="reviewFilters" hidden aria-label="Filtrer les éléments à vérifier"></div>
+        <div class="duplicate-tools" id="duplicateTools" hidden>
+          <button class="button secondary compact" id="verifyDuplicates">Comparer le contenu des doublons probables</button>
+          <span id="duplicateCheckStatus" role="status" aria-live="polite"></span>
+        </div>
+        <p class="review-explanation" id="duplicateCheckHint" hidden>Cette vérification lit entièrement les fichiers suspects et peut prendre du temps selon leur taille.</p>
         <p class="review-explanation" id="reviewExplanation" hidden>Une analyse technique indisponible ne prouve pas que Resolve ne peut pas lire le fichier. Les alertes n’empêchent pas la création : tu peux garder ou exclure chaque média.</p>
 
         <div class="media-table-wrap" id="tableWrap" hidden>

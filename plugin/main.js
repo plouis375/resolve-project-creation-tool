@@ -4,6 +4,7 @@ const { promisify } = require('node:util');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { createReadStream } = require('node:fs');
 const WorkflowIntegration = require('./WorkflowIntegration.node');
 const { addWatchFolders, isProcessRunning } = require('./proxy-settings');
 
@@ -294,6 +295,7 @@ function markDuplicates(files) {
     if (first) {
       file.duplicateOf = first.id;
       file.include = false;
+      file.duplicateAutoExcluded = true;
     } else {
       firstByFingerprint.set(fingerprint, file);
     }
@@ -341,6 +343,87 @@ async function scanSources(event, paths) {
     roots: roots.map((folder) => ({ path: folder, name: path.basename(folder) || folder })),
     ffprobeAvailable: Boolean(await findFFprobe())
   };
+}
+
+function hashFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = createReadStream(filePath);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
+
+async function verifyDuplicateContents(event, options) {
+  const scanId = options?.scanId;
+  const files = scanSnapshots.get(scanId);
+  if (!files) throw new Error('Analyse expirée. Reprends la sélection des dossiers.');
+  const selections = new Map((options?.files || []).map((file) => [file.id, file]));
+  for (const file of files) {
+    const selection = selections.get(file.id);
+    if (!selection) continue;
+    file.include = selection.include !== false;
+    if (selection.duplicateManuallyChanged) file.duplicateAutoExcluded = false;
+  }
+  const byId = new Map(files.map((file) => [file.id, file]));
+  const groups = new Map();
+  for (const file of files) {
+    if (!file.duplicateOf) continue;
+    const group = groups.get(file.duplicateOf) || [byId.get(file.duplicateOf)];
+    group.push(file);
+    groups.set(file.duplicateOf, group);
+  }
+  const jobs = [...groups.values()];
+  const total = jobs.reduce((sum, group) => sum + group.length, 0);
+  if (!total) return { identicalGroups: 0, distinctFiles: 0, unreadableGroups: 0 };
+  let completed = 0;
+  let identicalGroups = 0;
+  let distinctFiles = 0;
+  let unreadableGroups = 0;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < jobs.length) {
+      const group = jobs[cursor++];
+      let processed = 0;
+      try {
+        const hashes = [];
+        for (const file of group) {
+          hashes.push(await hashFile(file.filePath));
+          processed += 1;
+          completed += 1;
+          sendProgress(event, { stage: 'duplicate-check', current: completed, total, label: 'Comparaison du contenu' });
+        }
+        const clusters = new Map();
+        group.forEach((file, index) => {
+          const cluster = clusters.get(hashes[index]) || [];
+          cluster.push(file);
+          clusters.set(hashes[index], cluster);
+        });
+        for (const cluster of clusters.values()) {
+          const primary = cluster[0];
+          primary.duplicateOf = null;
+          if (primary.duplicateAutoExcluded) {
+            primary.include = true;
+            distinctFiles += 1;
+          }
+          primary.duplicateAutoExcluded = false;
+          for (const file of cluster.slice(1)) {
+            file.duplicateOf = primary.id;
+            file.duplicateVerification = 'identical';
+          }
+          if (cluster.length > 1) identicalGroups += 1;
+        }
+      } catch (_) {
+        for (const file of group.slice(1)) file.duplicateVerification = 'unreadable';
+        unreadableGroups += 1;
+        completed += group.length - processed;
+        sendProgress(event, { stage: 'duplicate-check', current: completed, total, label: 'Comparaison du contenu' });
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(2, jobs.length) }, worker));
+  return { identicalGroups, distinctFiles, unreadableGroups };
 }
 
 function normalizeProjectName(value) {
@@ -560,6 +643,7 @@ function registerHandlers() {
     return result.canceled ? [] : result.filePaths;
   });
   ipcMain.handle('tool:scan-sources', (event, paths) => scanSources(event, paths));
+  ipcMain.handle('tool:verify-duplicates', (event, options) => verifyDuplicateContents(event, options));
   ipcMain.handle('tool:create-project', (event, options) => createProject(event, options));
   ipcMain.handle('tool:open-proxy-generator', async (_event, sourcePaths) => {
     try {

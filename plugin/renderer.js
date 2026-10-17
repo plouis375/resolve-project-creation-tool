@@ -14,6 +14,7 @@ const state = {
   scanning: false,
   creating: false,
   ffprobeAvailable: false,
+  duplicateCheckBusy: false,
   toastTimer: null
 };
 
@@ -117,7 +118,7 @@ function reviewReasons(file) {
   if (file.size > 0 && !file.verified) reasons.push({ id: 'analysis', label: 'Analyse technique indisponible' });
   if (file.category === 'Rushs' && (!file.cameraBrand || !file.cameraModel || file.cameraBrand === 'À identifier' || file.cameraModel === 'À identifier')) reasons.push({ id: 'camera', label: 'Caméra à identifier' });
   if (file.category === 'Rushs' && file.dateSource === 'creation') reasons.push({ id: 'date', label: 'Date de création utilisée' });
-  if (file.duplicateOf) reasons.push({ id: 'duplicate', label: 'Doublon probable' });
+  if (file.duplicateOf) reasons.push({ id: 'duplicate', label: file.duplicateVerification === 'identical' ? 'Contenu identique' : file.duplicateVerification === 'unreadable' ? 'Doublon probable · comparaison impossible' : 'Doublon probable' });
   return reasons;
 }
 
@@ -131,6 +132,7 @@ function renderTable() {
     $('reviewLabel').textContent = '0 élément à vérifier';
     $('reviewFilters').hidden = true;
     $('reviewExplanation').hidden = true;
+    updateDuplicateTools();
     formatSummary();
     return;
   }
@@ -148,6 +150,7 @@ function renderTable() {
   const reviewCount = state.files.filter((file) => reviewReasons(file).length).length;
   $('reviewLabel').textContent = `${reviewCount} élément${reviewCount > 1 ? 's' : ''} à vérifier`;
   $('reviewExplanation').hidden = !reviewCount;
+  updateDuplicateTools();
   renderReviewFilters();
 
   if (!visible.length) {
@@ -192,12 +195,24 @@ function renderTable() {
   document.querySelectorAll('[data-include]').forEach((checkbox) => {
     checkbox.addEventListener('change', () => {
       const file = state.files.find((item) => item.id === checkbox.dataset.include);
-      if (file) file.include = checkbox.checked;
+      if (file) {
+        file.include = checkbox.checked;
+        if (file.duplicateOf) file.duplicateManuallyChanged = true;
+      }
       checkbox.closest('tr').classList.toggle('excluded-row', !checkbox.checked);
       formatSummary();
     });
   });
   formatSummary();
+}
+
+function updateDuplicateTools() {
+  const count = state.files.filter((file) => file.duplicateOf).length;
+  $('duplicateTools').hidden = !count && !$('duplicateCheckStatus').textContent;
+  $('verifyDuplicates').hidden = !count;
+  $('duplicateCheckHint').hidden = !count;
+  $('verifyDuplicates').disabled = state.duplicateCheckBusy || !count;
+  $('verifyDuplicates').textContent = state.duplicateCheckBusy ? 'Comparaison en cours…' : 'Comparer le contenu des doublons probables';
 }
 
 function updateReviewCount() {
@@ -243,6 +258,7 @@ async function scanSelectedSources() {
     const result = await window.projectTool.scanSources(state.sourcePaths);
     state.scanId = result.scanId;
     state.files = result.files;
+    $('duplicateCheckStatus').textContent = '';
     state.ffprobeAvailable = result.ffprobeAvailable;
     $('probeWarning').hidden = result.ffprobeAvailable;
     $('tableWrap').scrollTop = 0;
@@ -407,9 +423,32 @@ $('chooseSources').addEventListener('click', chooseSources);
 $('createNow').addEventListener('click', createProjectNow);
 $('filterInput').addEventListener('input', (event) => { state.filter = event.target.value; state.page = 0; renderTable(); });
 $('hideDuplicates').addEventListener('change', (event) => {
-  if (event.target.checked) state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = false; });
-  else state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = true; });
+  if (event.target.checked) state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = false; file.duplicateAutoExcluded = false; file.duplicateManuallyChanged = true; });
+  else state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = true; file.duplicateAutoExcluded = false; file.duplicateManuallyChanged = true; });
   renderTable();
+});
+$('verifyDuplicates').addEventListener('click', async () => {
+  state.duplicateCheckBusy = true;
+  $('duplicateCheckStatus').textContent = 'Préparation…';
+  updateDuplicateTools();
+  try {
+    const result = await window.projectTool.verifyDuplicates({
+      scanId: state.scanId,
+      files: state.files.map((file) => ({ id: file.id, include: file.include, duplicateManuallyChanged: file.duplicateManuallyChanged }))
+    });
+    const messages = [];
+    if (result.identicalGroups) messages.push(`${result.identicalGroups} groupe(s) confirmé(s)`);
+    if (result.distinctFiles) messages.push(`${result.distinctFiles} fichier(s) distinct(s) réintégré(s)`);
+    if (result.unreadableGroups) messages.push(`${result.unreadableGroups} groupe(s) non vérifiable(s)`);
+    $('duplicateCheckStatus').textContent = messages.join(' · ') || 'Aucun doublon à confirmer.';
+    renderTable();
+  } catch (error) {
+    $('duplicateCheckStatus').textContent = 'La comparaison a échoué.';
+    showToast(error.message || 'Comparaison impossible.');
+  } finally {
+    state.duplicateCheckBusy = false;
+    updateDuplicateTools();
+  }
 });
 $('retryConnection').addEventListener('click', async () => {
   $('retryConnection').disabled = true;
@@ -417,6 +456,7 @@ $('retryConnection').addEventListener('click', async () => {
 });
 window.projectTool.onProgress((progress) => {
   if (progress.stage === 'scan') setScanProgress(progress);
+  else if (progress.stage === 'duplicate-check') $('duplicateCheckStatus').textContent = `${progress.label} · ${progress.current} / ${progress.total}`;
   else updateCreateProgress(progress);
   if (progress.stage === 'error') showToast(progress.label);
 });

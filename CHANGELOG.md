@@ -1,5 +1,11 @@
 # Historique des versions
 
+## v0.08 — 17 octobre 2026
+
+- Ajoute une comparaison SHA-256 facultative pour confirmer les doublons probables repérés par nom, taille et durée.
+- Les fichiers différents sont réintégrés automatiquement s’ils avaient été exclus par le tri initial; les fichiers non lisibles restent signalés sans être confirmés.
+- La comparaison lit uniquement les groupes suspects et affiche sa progression.
+
 ## v0.07 — 17 octobre 2026
 
 - L’installeur utilise d’abord le module Workflow Integration fourni dans l’archive; le SDK local ne sert plus que de repli pour le dépôt de développement.
