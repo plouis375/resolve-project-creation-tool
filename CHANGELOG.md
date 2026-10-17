@@ -1,5 +1,10 @@
 # Historique des versions
 
+## v0.04 — 17 octobre 2026
+
+- Ajoute automatiquement les dossiers sources à la liste surveillée de Blackmagic Proxy Generator, sans doublons et sans retirer les dossiers existants.
+- Refuse la mise à jour de la liste si le générateur est déjà ouvert.
+
 ## v0.03 — 17 octobre 2026
 
 - Ajoute une option facultative avec guide et bouton pour ouvrir l’application Blackmagic Proxy Generator depuis l’écran final.

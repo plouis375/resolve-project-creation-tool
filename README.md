@@ -1,4 +1,4 @@
-# Resolve Project Creation Tool — v0.03
+# Resolve Project Creation Tool — v0.04
 
 Assistant macOS intégré à **DaVinci Resolve Studio** pour créer un projet, trier les médias dans le Media Pool et préparer le montage. Il s’ouvre depuis le menu de Resolve, guide la préparation, puis se ferme quand le projet est prêt.
 
@@ -75,14 +75,15 @@ Cette option prépare une timeline de départ; elle ne crée pas de montage édi
 
 ## Proxies avec Blackmagic Proxy Generator
 
-À l’étape **Organisation**, coche « Préparer la génération de proxies » pour afficher le guide à la fin de la création. Le bouton ouvre l’application Blackmagic Proxy Generator incluse avec DaVinci Resolve Studio. Dans cette application, ajoute les dossiers voulus comme dossiers surveillés, choisis le format et la résolution, puis démarre la génération.
+À l’étape **Organisation**, coche « Préparer la génération de proxies » pour afficher le guide à la fin de la création. Depuis cet écran, le bouton ajoute automatiquement les dossiers sources à la liste des dossiers surveillés, puis ouvre Blackmagic Proxy Generator. Les chemins déjà enregistrés sont conservés; les doublons ne sont pas ajoutés. Vérifie le format et la résolution dans l’application. Si le générateur est déjà ouvert, ferme-le avant de cliquer : l’outil ne modifie pas sa liste pendant qu’il tourne.
 
-Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; il peut donc traiter des fichiers qui ont été exclus de la liste d’import du plugin. Les proxies sont écrits dans des sous-dossiers `proxy` à côté des médias. Resolve associe automatiquement les proxies reconnus à leurs originaux. Le plugin ne configure pas le générateur, n’estime pas l’espace nécessaire, ne démarre pas le traitement et ne suit pas sa progression : ces actions se font dans l’application Blackmagic.
+Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; il peut donc traiter des fichiers qui ont été exclus de la liste d’import du plugin. Les proxies sont écrits dans des sous-dossiers `proxy` à côté des médias. Resolve associe automatiquement les proxies reconnus à leurs originaux. L’outil ne change pas le format, la résolution ni le réglage de démarrage du générateur. Selon ce dernier réglage, le traitement peut démarrer automatiquement à l’ouverture. Les dossiers enregistrés restent surveillés jusqu’à ce que tu les retires dans l’application. L’outil met à jour le fichier de préférences local de Blackmagic Proxy Generator; Blackmagic ne documente pas d’API publique pour cette opération, donc une évolution de son format de préférences pourrait nécessiter une mise à jour du plugin.
 
-## Autres fonctions non disponibles en v0.03
+## Autres fonctions non disponibles en v0.04
 
 - **Archivage** — Aucun archivage de projet n’est proposé; cette fonction n’est pas prévue dans le périmètre actuel.
 - **Dossiers Finder et sauvegarde des médias** — Le plugin organise les chutiers Resolve et conserve les médias à leur emplacement. Il ne crée pas une arborescence disque et ne réalise pas de copie de sauvegarde.
+- **Espace disque des proxies** — L’outil n’estime pas l’espace requis; consulte l’indication dans Blackmagic Proxy Generator.
 - **Exports** — Le chutier Exports est créé, mais les presets, noms et réglages de rendu restent à configurer dans Resolve.
 
 ## Dépannage

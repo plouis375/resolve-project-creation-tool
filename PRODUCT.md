@@ -24,7 +24,7 @@ The product combines Resolve project setup, guided media classification, and cam
 
 ## Operating Context
 
-- Runs inside DaVinci Resolve Studio on macOS as a Workflow Integration plugin, launched from `Workspace → Workflow Integrations`; the plugin opens in a separate window. The user has Resolve Studio 21.1.0 installed from Blackmagic Design's website.
+- Runs inside DaVinci Resolve Studio on macOS as a Workflow Integration plugin, launched from `Workspace → Workflow Integrations`; the plugin opens in a separate window. The user has Resolve Studio 21.1.1 installed from Blackmagic Design's website.
 - Resolve registers the integration under its Workflow Integrations submenu. V1 does not replace or add a choice inside Resolve's native New Project dialog; the user opens the setup assistant from the Workspace menu.
 - Example project: “Campagne Nike 2026”.
 - Source media stays at its original Finder locations. The product does not create Finder folder structures or copy source media automatically.
@@ -37,7 +37,7 @@ The product combines Resolve project setup, guided media classification, and cam
 - Organize video rushs as brand → camera model → shooting date. Prefer shooting-date metadata, falling back to file creation date and indicating fallback values.
 - Detect likely duplicates by filename, file size, and duration; offer to skip them without a full content hash.
 - Optionally prepare an “[Project Name] — Assemblage” timeline with retained rushs placed end-to-end. Derive timeline format from the dominant rush format; default to 16:9 when no dominant format emerges.
-- Offer an optional guided handoff to Blackmagic Proxy Generator: show selected source folders and launch the installed app. The editor must configure watch folders, format, resolution, and start the job there; the plugin does not control or monitor generation.
+- Offer optional proxy preparation: append selected source folders to Blackmagic Proxy Generator's saved watch-folder list without duplicates, then open the installed app. Preserve existing watched paths and refuse to edit preferences while the generator is running. Format and resolution remain user-controlled; generation may start according to the generator's saved Start setting.
 - Before import, flag files that appear unreadable or incomplete. The plugin does not estimate proxy storage space; the editor configures and starts proxy generation in Blackmagic Proxy Generator.
 - Show media count, total size, formats, identified cameras, and import warnings during setup and on the completion screen.
 - Flag files the metadata scanner cannot read so the user can review them before import. A failed metadata scan does not prove Resolve cannot decode a file.
@@ -53,7 +53,7 @@ The user wants a clear, restrained, polished interface that feels at home in DaV
 
 ## Evidence on Hand
 
-- The installed Resolve 21.1.0 developer documentation is available on this Mac at `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/`.
+- The installed Resolve 21.1.1 developer documentation is available on this Mac at `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/`.
 - A user-supplied sample of seven Canon EOS C70 MXF clips with paired XML sidecars was scanned. The plugin identified the camera model and filtered the sidecars from the sequence list; the user confirmed the Resolve workflow works after installing the corrected v0.02 package.
 - Other camera brands and media formats have not been systematically validated.
 

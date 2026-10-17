@@ -5,6 +5,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const WorkflowIntegration = require('./WorkflowIntegration.node');
+const { addWatchFolders, isProcessRunning } = require('./proxy-settings');
 
 const execFileAsync = promisify(execFile);
 const PLUGIN_ID = 'com.idolatry.resolveprojectcreationtool';
@@ -17,6 +18,7 @@ const SEQUENCE = new Set(['.fcpxml', '.edl', '.aaf', '.drt', '.otio', '.xml']);
 const SUPPORTED = new Set([...VIDEO, ...AUDIO, ...STILL, ...GRAPHIC, ...SEQUENCE]);
 const PROBE_PATHS = ['/opt/homebrew/bin/ffprobe', '/usr/local/bin/ffprobe', '/usr/bin/ffprobe'];
 const PROXY_GENERATOR_APP = '/Applications/Blackmagic Proxy Generator.app';
+const PROXY_GENERATOR_EXECUTABLE = `${PROXY_GENERATOR_APP}/Contents/MacOS/Blackmagic Proxy Generator`;
 
 let mainWindow;
 let resolveObj;
@@ -555,13 +557,18 @@ function registerHandlers() {
   });
   ipcMain.handle('tool:scan-sources', (event, paths) => scanSources(event, paths));
   ipcMain.handle('tool:create-project', (event, options) => createProject(event, options));
-  ipcMain.handle('tool:open-proxy-generator', async () => {
+  ipcMain.handle('tool:open-proxy-generator', async (_event, sourcePaths) => {
     try {
       await fs.access(PROXY_GENERATOR_APP);
+      if (await isProcessRunning(PROXY_GENERATOR_EXECUTABLE)) {
+        throw new Error('Ferme Blackmagic Proxy Generator puis réessaie. Il doit être fermé pour actualiser sa liste de dossiers surveillés.');
+      }
+      const settingsPath = path.join(app.getPath('home'), 'Library', 'Preferences', 'Blackmagic Design', 'Blackmagic Proxy Generator', 'ProxyGeneratorSettings.plist');
+      const added = await addWatchFolders(settingsPath, sourcePaths);
       await execFileAsync('/usr/bin/open', ['-a', PROXY_GENERATOR_APP]);
-      return true;
-    } catch (_) {
-      throw new Error('Blackmagic Proxy Generator est introuvable dans cette installation de Resolve.');
+      return { added };
+    } catch (error) {
+      throw new Error(error.message || 'Impossible d’ajouter les dossiers ou d’ouvrir Blackmagic Proxy Generator.');
     }
   });
   ipcMain.handle('tool:finish', async () => {

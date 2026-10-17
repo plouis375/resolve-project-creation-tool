@@ -118,7 +118,7 @@
           </label>
           <label class="option-row">
             <span class="option-check"><input id="prepareProxies" type="checkbox"><span class="checkmark"></span></span>
-            <span class="option-copy"><strong>Préparer la génération de proxies</strong><span>L’écran final proposera d’ouvrir Blackmagic Proxy Generator. Tu choisiras les dossiers surveillés, le format et la résolution dans cette application.</span></span>
+            <span class="option-copy"><strong>Préparer la génération de proxies</strong><span>À la fin, les dossiers sources seront ajoutés à la surveillance, puis Blackmagic Proxy Generator s’ouvrira. Tu choisiras le format et la résolution dans cette application.</span></span>
             <span class="option-state">Optionnel</span>
           </label>
           <div class="proxy-scope-note">
@@ -152,10 +152,10 @@
         <p class="completion-warning" id="completionWarning" hidden></p>
         <section class="proxy-guide" id="proxyGuide" hidden>
           <h2>Terminer la préparation des proxies</h2>
-          <p>Dans Blackmagic Proxy Generator, ajoute les dossiers voulus comme dossiers surveillés, choisis le format et la résolution, puis démarre la génération.</p>
+          <p>Le bouton ajoute les dossiers sources à la surveillance en conservant les dossiers déjà enregistrés, puis ouvre Blackmagic Proxy Generator. Vérifie le format et la résolution avant de démarrer la génération.</p>
           <ul id="proxySourceList" class="proxy-source-list"></ul>
           <p class="proxy-path-note">Le générateur crée les proxies dans des sous-dossiers <code>proxy</code> près des médias. Resolve les associe automatiquement quand il reconnaît les originaux.</p>
-          <button class="button secondary" id="openProxyGenerator">Ouvrir Blackmagic Proxy Generator</button>
+          <button class="button secondary" id="openProxyGenerator">Ajouter les dossiers et ouvrir le générateur</button>
         </section>
         <div class="completion-footer"><span class="muted">Tu peux fermer cet assistant et commencer le montage.</span><button class="button primary" id="finish">Fermer et passer au montage</button></div>
       </section>

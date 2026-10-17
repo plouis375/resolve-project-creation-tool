@@ -367,8 +367,8 @@ $('openProxyGenerator').addEventListener('click', async () => {
   const button = $('openProxyGenerator');
   button.disabled = true;
   try {
-    await window.projectTool.openProxyGenerator();
-    showToast('Blackmagic Proxy Generator est ouvert. Ajoute les dossiers affichés comme dossiers surveillés.');
+    const result = await window.projectTool.openProxyGenerator(state.sourcePaths);
+    showToast(result.added ? `${result.added} dossier(s) ajouté(s) à la surveillance.` : 'Tous les dossiers sont déjà surveillés.');
   } catch (error) {
     showToast(error.message || 'Impossible d’ouvrir Blackmagic Proxy Generator.');
   } finally {
