@@ -328,22 +328,48 @@ function markDuplicates(files) {
     const first = firstByFingerprint.get(fingerprint);
     if (first) {
       file.duplicateOf = first.id;
-      file.include = false;
-      file.duplicateAutoExcluded = true;
+      if (!file.duplicateManuallyChanged && !file.includeManuallyChanged) {
+        file.include = false;
+        file.duplicateAutoExcluded = true;
+      }
     } else {
       firstByFingerprint.set(fingerprint, file);
     }
   }
 }
 
-async function scanSources(event, paths, signal) {
-  if (!Array.isArray(paths) || !paths.length) throw new Error('Choisis au moins un dossier source.');
-  const roots = [...new Set(paths.map((item) => path.resolve(item)))];
+function bestSourceRoot(filePath, roots) {
+  return roots
+    .filter((root) => {
+      const relative = path.relative(root.realPath || root.sourcePath || root, filePath);
+      return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+    })
+    .sort((a, b) => (b.realPath || b.sourcePath || b).length - (a.realPath || a.sourcePath || a).length)[0]?.sourcePath || '';
+}
+
+async function scanSources(event, paths, previousScanId, activePaths, previousFiles, signal) {
+  const roots = [...new Set((activePaths || paths || []).map((item) => path.resolve(item)))];
+  const rootRecords = await Promise.all(roots.map(async (sourcePath) => ({
+    sourcePath,
+    realPath: await fs.realpath(sourcePath).catch(() => sourcePath)
+  })));
+  const previous = previousScanId ? scanSnapshots.get(previousScanId) : null;
+  if (!roots.length) throw new Error('Choisis au moins un dossier source.');
+  if (previousScanId && !previous) throw new Error('Analyse expirée. Reprends la sélection des dossiers.');
+  const edits = new Map((Array.isArray(previousFiles) ? previousFiles : []).map((file) => [file.id, file]));
   const allFiles = [];
-  for (let index = 0; index < roots.length; index += 1) {
+  const retained = (previous || []).filter((file) => bestSourceRoot(file.filePath, rootRecords));
+  for (const file of retained) {
+    const sourceFolder = bestSourceRoot(file.filePath, rootRecords);
+    const edit = edits.get(file.id);
+    const include = edit?.includeManuallyChanged ? edit.include !== false : file.duplicateAutoExcluded && !file.duplicateManuallyChanged ? true : file.include;
+    allFiles.push({ ...file, sourceFolder, duplicateOf: null, duplicateVerification: undefined, duplicateAutoExcluded: false, include, includeManuallyChanged: Boolean(edit?.includeManuallyChanged), duplicateManuallyChanged: Boolean(edit?.duplicateManuallyChanged) });
+  }
+  const scanRoots = [...new Set((paths || []).map((item) => path.resolve(item)))];
+  for (let index = 0; index < scanRoots.length; index += 1) {
     throwIfAborted(signal);
-    const files = await scanDirectory(roots[index], signal);
-    allFiles.push(...files.map((file) => ({ ...file, sourceFolder: roots[index] })));
+    const files = await scanDirectory(scanRoots[index], signal);
+    allFiles.push(...files.map((file) => ({ ...file, sourceFolder: bestSourceRoot(file.filePath, rootRecords) || scanRoots[index] })));
   }
   throwIfAborted(signal);
   const seenPaths = new Set();
@@ -355,22 +381,25 @@ async function scanSources(event, paths, signal) {
   });
   if (!uniqueFiles.length) throw new Error('Aucun média reconnu dans les dossiers choisis.');
 
-  const results = new Array(uniqueFiles.length);
+  const newFiles = uniqueFiles.filter((file) => !file.id);
+  const results = uniqueFiles.filter((file) => file.id);
+  const enriched = new Array(newFiles.length);
   let cursor = 0;
   let completed = 0;
   async function worker() {
-    while (cursor < uniqueFiles.length) {
+    while (cursor < newFiles.length) {
       throwIfAborted(signal);
       const index = cursor++;
-      results[index] = await enrichFile(uniqueFiles[index], signal);
+      enriched[index] = await enrichFile(newFiles[index], signal);
       completed += 1;
-      if (completed % 5 === 0 || completed === uniqueFiles.length) {
-        sendProgress(event, { stage: 'scan', current: completed, total: uniqueFiles.length, label: 'Analyse des médias' });
+      if (completed % 5 === 0 || completed === newFiles.length) {
+        sendProgress(event, { stage: 'scan', current: completed, total: newFiles.length, label: 'Analyse des nouveaux médias' });
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(4, uniqueFiles.length) }, worker));
+  if (newFiles.length) await Promise.all(Array.from({ length: Math.min(4, newFiles.length) }, worker));
   throwIfAborted(signal);
+  results.push(...enriched);
   markDuplicates(results);
   scanSnapshots.clear();
   const scanId = crypto.randomUUID();
@@ -688,7 +717,7 @@ function registerHandlers() {
     });
     return result.canceled ? [] : result.filePaths;
   });
-  ipcMain.handle('tool:scan-sources', (event, operationId, paths) => runOperation(event, operationId, (signal) => scanSources(event, paths, signal)));
+  ipcMain.handle('tool:scan-sources', (event, operationId, paths, previousScanId, activePaths, previousFiles) => runOperation(event, operationId, (signal) => scanSources(event, paths, previousScanId, activePaths, previousFiles, signal)));
   ipcMain.handle('tool:verify-duplicates', (event, operationId, options) => runOperation(event, operationId, (signal) => verifyDuplicateContents(event, options, signal)));
   ipcMain.handle('tool:cancel-operation', (_event, operationId) => {
     const controller = operations.get(operationId);

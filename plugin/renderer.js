@@ -94,6 +94,7 @@ function renderBins() {
 }
 
 function renderSources() {
+  $('chooseSources').disabled = state.scanning || state.duplicateCheckBusy;
   $('chooseSources').querySelector('span').textContent = state.scanning ? 'Analyse en cours…' : state.sourcePaths.length && !state.files.length ? 'Relancer l’analyse' : 'Ajouter un dossier';
   if (!state.sourcePaths.length) {
     $('sourceList').innerHTML = '<div class="source-empty">Ajoute les dossiers qui contiennent tes rushs, musiques et éléments.</div>';
@@ -102,16 +103,22 @@ function renderSources() {
   $('sourceList').innerHTML = state.sourcePaths.map((source) => {
     const count = state.files.filter((file) => file.sourceFolder === source).length;
     const bytes = state.files.filter((file) => file.sourceFolder === source).reduce((sum, file) => sum + file.size, 0);
-    return `<div class="source-card"><span class="folder-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h7l2 2H21v9H3z"/><path d="M3 7.5V6h7l2 2"/></svg></span><div class="source-info"><div class="source-name" title="${escapeHTML(source)}">${escapeHTML(source)}</div><div class="source-meta">${count} média${count > 1 ? 's' : ''}${count ? ` · ${bytesLabel(bytes)}` : ''}</div></div><button class="source-remove" data-remove-source="${escapeHTML(source)}" aria-label="Retirer ce dossier" ${state.scanning ? 'disabled' : ''}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div>`;
+    return `<div class="source-card"><span class="folder-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h7l2 2H21v9H3z"/><path d="M3 7.5V6h7l2 2"/></svg></span><div class="source-info"><div class="source-name" title="${escapeHTML(source)}">${escapeHTML(source)}</div><div class="source-meta">${count} média${count > 1 ? 's' : ''}${count ? ` · ${bytesLabel(bytes)}` : ''}</div></div><button class="source-remove" data-remove-source="${escapeHTML(source)}" aria-label="Retirer ce dossier" ${state.scanning || state.duplicateCheckBusy ? 'disabled' : ''}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div>`;
   }).join('');
   document.querySelectorAll('[data-remove-source]').forEach((button) => {
     button.addEventListener('click', () => {
+      const previousState = { sourcePaths: [...state.sourcePaths], scanId: state.scanId, files: state.files };
       state.sourcePaths = state.sourcePaths.filter((source) => source !== button.dataset.removeSource);
-      state.files = state.files.filter((file) => file.sourceFolder !== button.dataset.removeSource);
-      state.scanId = '';
-      renderSources();
-      renderTable();
-      if (state.sourcePaths.length) scanSelectedSources();
+      if (!state.sourcePaths.length) {
+        state.scanId = '';
+        state.files = [];
+        $('duplicateCheckStatus').textContent = '';
+        renderSources();
+        renderTable();
+        formatSummary();
+        return;
+      }
+      scanSelectedSources([], previousState);
     });
   });
 }
@@ -201,6 +208,7 @@ function renderTable() {
       const file = state.files.find((item) => item.id === checkbox.dataset.include);
       if (file) {
         file.include = checkbox.checked;
+        file.includeManuallyChanged = true;
         if (file.duplicateOf) file.duplicateManuallyChanged = true;
       }
       checkbox.closest('tr').classList.toggle('excluded-row', !checkbox.checked);
@@ -211,6 +219,8 @@ function renderTable() {
 }
 
 function updateDuplicateTools() {
+  $('chooseSources').disabled = state.scanning || state.duplicateCheckBusy;
+  document.querySelectorAll('[data-remove-source]').forEach((button) => { button.disabled = state.scanning || state.duplicateCheckBusy; });
   const count = state.files.filter((file) => file.duplicateOf).length;
   $('duplicateTools').hidden = !count && !$('duplicateCheckStatus').textContent;
   $('verifyDuplicates').hidden = !count;
@@ -253,7 +263,7 @@ function setScanProgress(progress) {
   text.textContent = `${progress.label} · ${progress.current} / ${progress.total}`;
 }
 
-async function scanSelectedSources() {
+async function scanSelectedSources(pathsToScan = state.sourcePaths, previousState = null) {
   if (!state.sourcePaths.length) return;
   state.scanOperationId = crypto.randomUUID();
   state.reviewFilter = '';
@@ -265,17 +275,37 @@ async function scanSelectedSources() {
   $('progressBar').style.width = '0%';
   $('progressText').textContent = 'Préparation de l’analyse…';
   try {
-    const result = await window.projectTool.scanSources(state.scanOperationId, state.sourcePaths);
+    const result = await window.projectTool.scanSources(
+      state.scanOperationId,
+      pathsToScan,
+      previousState?.scanId || '',
+      state.sourcePaths,
+      previousState?.files.map(({ id, include, includeManuallyChanged, duplicateManuallyChanged }) => ({ id, include, includeManuallyChanged, duplicateManuallyChanged })) || []
+    );
     if (result.cancelled) {
-      state.scanId = '';
-      state.files = [];
+      if (previousState) Object.assign(state, previousState);
+      else { state.scanId = ''; state.files = []; }
       renderSources();
       renderTable();
-      showToast('Analyse interrompue. Tu peux la relancer ou retirer un dossier.');
+      showToast(previousState ? 'Mise à jour interrompue. Les résultats précédents sont conservés.' : 'Analyse interrompue. Tu peux la relancer ou retirer un dossier.');
       return;
     }
     state.scanId = result.scanId;
-    state.files = result.files;
+    const previousFiles = new Map((previousState?.files || []).map((file) => [file.id, file]));
+    state.files = result.files.map((file) => {
+      const old = previousFiles.get(file.id);
+      return old ? {
+        ...file,
+        category: old.category,
+        cameraBrand: old.cameraBrand,
+        cameraModel: old.cameraModel,
+        shootingDate: old.shootingDate,
+        dateSource: old.dateSource,
+        include: old.includeManuallyChanged ? old.include : file.include,
+        includeManuallyChanged: old.includeManuallyChanged,
+        duplicateManuallyChanged: old.duplicateManuallyChanged
+      } : file;
+    });
     $('duplicateCheckStatus').textContent = '';
     state.ffprobeAvailable = result.ffprobeAvailable;
     $('probeWarning').hidden = result.ffprobeAvailable;
@@ -283,10 +313,11 @@ async function scanSelectedSources() {
     state.page = 0;
     renderSources();
     renderTable();
+    if (previousState) showToast('Dossiers mis à jour. L’analyse des doublons a été réinitialisée.');
   } catch (error) {
     showToast(error.message || 'Analyse des dossiers impossible.');
-    state.files = [];
-    state.scanId = '';
+    if (previousState) Object.assign(state, previousState);
+    else { state.files = []; state.scanId = ''; }
     renderTable();
   } finally {
     state.scanning = false;
@@ -301,6 +332,7 @@ async function scanSelectedSources() {
 }
 
 async function chooseSources() {
+  if (state.scanning || state.duplicateCheckBusy) return;
   if (state.sourcePaths.length && !state.files.length) {
     await scanSelectedSources();
     return;
@@ -310,12 +342,12 @@ async function chooseSources() {
     if (!paths.length) return;
     const next = [...new Set([...state.sourcePaths, ...paths])];
     if (next.length === state.sourcePaths.length) return;
+    const previousState = { sourcePaths: [...state.sourcePaths], scanId: state.scanId, files: state.files };
+    const added = next.filter((source) => !state.sourcePaths.includes(source));
     state.sourcePaths = next;
-    state.files = [];
-    state.scanId = '';
     renderSources();
     renderTable();
-    await scanSelectedSources();
+    await scanSelectedSources(added, previousState.scanId ? previousState : null);
   } catch (error) {
     showToast(error.message || 'Impossible de choisir les dossiers.');
   }
@@ -458,8 +490,8 @@ $('cancelScan').addEventListener('click', async () => {
 });
 $('filterInput').addEventListener('input', (event) => { state.filter = event.target.value; state.page = 0; renderTable(); });
 $('hideDuplicates').addEventListener('change', (event) => {
-  if (event.target.checked) state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = false; file.duplicateAutoExcluded = false; file.duplicateManuallyChanged = true; });
-  else state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = true; file.duplicateAutoExcluded = false; file.duplicateManuallyChanged = true; });
+  if (event.target.checked) state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = false; file.includeManuallyChanged = true; file.duplicateAutoExcluded = false; file.duplicateManuallyChanged = true; });
+  else state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = true; file.includeManuallyChanged = true; file.duplicateAutoExcluded = false; file.duplicateManuallyChanged = true; });
   renderTable();
 });
 $('verifyDuplicates').addEventListener('click', async () => {

@@ -1,5 +1,11 @@
 # Historique des versions
 
+## v0.11 — 17 octobre 2026
+
+- Ajoute ou retire des dossiers sources sans réanalyser les médias déjà examinés.
+- Préserve les catégories, les métadonnées caméra et les choix d’inclusion faits manuellement.
+- Recalcule les doublons probables après une modification des dossiers sources.
+
 ## v0.10 — 17 octobre 2026
 
 - Permet d’interrompre le scan des dossiers et l’analyse des médias; les dossiers sélectionnés restent disponibles pour relancer le scan.
