@@ -83,6 +83,8 @@
             <label class="check-label"><input id="hideDuplicates" type="checkbox" checked><span>Ignorer doublons probables</span></label>
           </div>
         </div>
+        <div class="review-filters" id="reviewFilters" hidden aria-label="Filtrer les éléments à vérifier"></div>
+        <p class="review-explanation" id="reviewExplanation" hidden>Une analyse technique indisponible ne prouve pas que Resolve ne peut pas lire le fichier. Les alertes n’empêchent pas la création : tu peux garder ou exclure chaque média.</p>
 
         <div class="media-table-wrap" id="tableWrap" hidden>
           <table class="media-table">
@@ -96,7 +98,7 @@
         </div>
         <div class="source-warning" id="probeWarning" hidden>
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8 18 17H2L10 2.8Z"/><path d="M10 7v4.5M10 14.2v.1"/></svg>
-          <span>Analyse détaillée indisponible. Les catégories restent modifiables et les durées peuvent manquer.</span>
+          <span>Outil d’analyse technique indisponible. Les durées et les métadonnées caméra peuvent manquer; Resolve peut toutefois lire les médias.</span>
         </div>
         <div class="view-footer">
           <span class="muted" id="mediaSummary">Aucun dossier sélectionné</span>

@@ -1,5 +1,10 @@
 # Historique des versions
 
+## v0.06 — 17 octobre 2026
+
+- Classe les alertes de contrôle par type et permet d’afficher rapidement les fichiers concernés.
+- Précise qu’une analyse technique indisponible ne signifie pas que Resolve ne peut pas lire le média; les alertes ne bloquent pas la création.
+
 ## v0.05 — 17 octobre 2026
 
 - Ignore les sous-dossiers `Proxy` créés par Blackmagic Proxy Generator lors du scan des médias.

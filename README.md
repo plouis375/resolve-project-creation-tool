@@ -1,4 +1,4 @@
-# Resolve Project Creation Tool — v0.05
+# Resolve Project Creation Tool — v0.06
 
 Assistant macOS intégré à **DaVinci Resolve Studio** pour créer un projet, trier les médias dans le Media Pool et préparer le montage. Il s’ouvre depuis le menu de Resolve, guide la préparation, puis se ferme quand le projet est prêt.
 
@@ -67,7 +67,7 @@ L’analyse utilise d’abord les métadonnées lues par `ffprobe`. Les champs d
 
 Les doublons probables sont repérés avec le **nom, la taille et la durée**. Les correspondances ultérieures sont exclues par défaut; tu peux les réinclure dans la liste. Il s’agit d’une détection rapide, pas d’une comparaison complète du contenu : des fichiers différents ayant les mêmes caractéristiques peuvent être signalés ensemble.
 
-L’outil signale les fichiers vides, les métadonnées illisibles et les rushs dont la caméra ou la date reste à confirmer. Une erreur de lecture des métadonnées ne signifie pas nécessairement que Resolve ne peut pas lire le média. Les fichiers originaux ne sont ni modifiés ni supprimés.
+L’écran **Sources** regroupe les alertes par type et permet de filtrer la liste : fichiers vides, analyse technique indisponible, caméra à identifier, date de création utilisée et doublons probables. Une analyse technique indisponible ne prouve pas que Resolve ne peut pas lire le média. Les alertes n’empêchent pas la création : tu peux garder ou exclure chaque fichier. Les fichiers originaux ne sont ni modifiés ni supprimés.
 
 ## Timeline d’assemblage (facultative)
 
@@ -81,7 +81,7 @@ Cette option prépare une timeline de départ; elle ne crée pas de montage édi
 
 Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; il peut donc traiter des fichiers qui ont été exclus de la liste d’import du plugin. Les proxies sont écrits dans des sous-dossiers `proxy` à côté des médias. Resolve associe automatiquement les proxies reconnus à leurs originaux. L’outil ne change pas le format, la résolution ni le réglage de démarrage du générateur. Selon ce dernier réglage, le traitement peut démarrer automatiquement à l’ouverture. Les dossiers enregistrés restent surveillés jusqu’à ce que tu les retires dans l’application. L’outil met à jour le fichier de préférences local de Blackmagic Proxy Generator; Blackmagic ne documente pas d’API publique pour cette opération, donc une évolution de son format de préférences pourrait nécessiter une mise à jour du plugin.
 
-## Autres fonctions non disponibles en v0.05
+## Autres fonctions non disponibles en v0.06
 
 - **Archivage** — Aucun archivage de projet n’est proposé; cette fonction n’est pas prévue dans le périmètre actuel.
 - **Dossiers Finder et sauvegarde des médias** — Le plugin organise les chutiers Resolve et conserve les médias à leur emplacement. Il ne crée pas une arborescence disque et ne réalise pas de copie de sauvegarde.

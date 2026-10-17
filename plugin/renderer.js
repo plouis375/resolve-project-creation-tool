@@ -9,6 +9,7 @@ const state = {
   scanId: '',
   files: [],
   filter: '',
+  reviewFilter: '',
   page: 0,
   scanning: false,
   creating: false,
@@ -110,12 +111,14 @@ function renderSources() {
   });
 }
 
-function rowReviewText(file) {
-  if (file.size === 0) return 'Fichier vide';
-  if (!file.verified) return 'Métadonnées non lues';
-  if (file.category === 'Rushs' && (!file.cameraBrand || !file.cameraModel || file.cameraBrand === 'À identifier' || file.cameraModel === 'À identifier')) return 'Caméra à identifier';
-  if (file.category === 'Rushs' && file.dateSource === 'creation') return 'Date de création utilisée';
-  return '';
+function reviewReasons(file) {
+  const reasons = [];
+  if (file.size === 0) reasons.push({ id: 'empty', label: 'Fichier vide' });
+  if (file.size > 0 && !file.verified) reasons.push({ id: 'analysis', label: 'Analyse technique indisponible' });
+  if (file.category === 'Rushs' && (!file.cameraBrand || !file.cameraModel || file.cameraBrand === 'À identifier' || file.cameraModel === 'À identifier')) reasons.push({ id: 'camera', label: 'Caméra à identifier' });
+  if (file.category === 'Rushs' && file.dateSource === 'creation') reasons.push({ id: 'date', label: 'Date de création utilisée' });
+  if (file.duplicateOf) reasons.push({ id: 'duplicate', label: 'Doublon probable' });
+  return reasons;
 }
 
 function renderTable() {
@@ -126,33 +129,36 @@ function renderTable() {
   if (!hasFiles) {
     $('mediaRows').innerHTML = '';
     $('reviewLabel').textContent = '0 élément à vérifier';
+    $('reviewFilters').hidden = true;
+    $('reviewExplanation').hidden = true;
     formatSummary();
     return;
   }
 
   const query = state.filter.toLocaleLowerCase('fr').trim();
   const filtered = state.files.filter((file) => {
-    if ($('hideDuplicates').checked && file.duplicateOf) return false;
+    if ($('hideDuplicates').checked && file.duplicateOf && state.reviewFilter !== 'duplicate') return false;
+    if (state.reviewFilter && !reviewReasons(file).some((reason) => reason.id === state.reviewFilter)) return false;
     return !query || file.name.toLocaleLowerCase('fr').includes(query) || file.filePath.toLocaleLowerCase('fr').includes(query) || file.category.toLocaleLowerCase('fr').includes(query);
   });
   const start = state.page * PAGE_SIZE;
   const visible = filtered.slice(start, start + PAGE_SIZE);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   if (state.page >= pageCount) state.page = pageCount - 1;
-  const reviewCount = state.files.filter((file) => rowReviewText(file)).length;
+  const reviewCount = state.files.filter((file) => reviewReasons(file).length).length;
   $('reviewLabel').textContent = `${reviewCount} élément${reviewCount > 1 ? 's' : ''} à vérifier`;
+  $('reviewExplanation').hidden = !reviewCount;
+  renderReviewFilters();
 
   if (!visible.length) {
     $('mediaRows').innerHTML = '<tr><td class="empty-filter" colspan="6">Aucun média ne correspond à cette recherche.</td></tr>';
   } else {
     $('mediaRows').innerHTML = visible.map((file) => {
-      const review = rowReviewText(file);
-      const duplicate = file.duplicateOf ? '<span class="review-mark duplicate-mark">Doublon possible</span>' : '';
-      const reviewBadge = review ? `<span class="review-mark">${escapeHTML(review)}</span>` : '';
+      const badges = reviewReasons(file).map((reason) => `<span class="review-mark ${reason.id}-mark">${escapeHTML(reason.label)}</span>`).join('');
       const destination = file.category === 'Rushs'
         ? `<div class="destination-edit"><input data-edit="cameraBrand" data-file="${file.id}" value="${escapeHTML(file.cameraBrand)}" placeholder="Marque" aria-label="Marque de caméra pour ${escapeHTML(file.name)}"><input data-edit="cameraModel" data-file="${file.id}" value="${escapeHTML(file.cameraModel)}" placeholder="Modèle" aria-label="Modèle de caméra pour ${escapeHTML(file.name)}"><input type="date" data-edit="shootingDate" data-file="${file.id}" value="${escapeHTML(file.shootingDate)}" aria-label="Date de tournage pour ${escapeHTML(file.name)}"></div>`
         : `<span class="destination-path" title="${escapeHTML(file.category)}">${escapeHTML(file.category)}</span>`;
-      return `<tr data-row="${file.id}" class="${file.duplicateOf ? 'duplicate-row' : ''}"><td><div class="file-cell"><span class="file-symbol">${categoryColor(file.category)}</span><div class="file-copy"><div class="file-name" title="${escapeHTML(file.name)}">${escapeHTML(file.name)}</div><div class="file-path" title="${escapeHTML(file.filePath)}">${escapeHTML(file.filePath)}</div>${reviewBadge}${duplicate}</div></div></td><td><select class="type-select" data-category="${file.id}" aria-label="Type de ${escapeHTML(file.name)}">${CATEGORIES.map((category) => `<option${file.category === category ? ' selected' : ''}>${escapeHTML(category)}</option>`).join('')}</select></td><td><div class="destination-cell"><span class="folder-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 5.5h6l1.4 1.6H18v8.9H2z"/><path d="M2 5.5V4h6l1.4 1.6"/></svg></span>${destination}</div></td><td class="size-cell">${bytesLabel(file.size)}</td><td class="duration-cell">${durationLabel(file.duration)}</td><td><input class="row-toggle" type="checkbox" data-include="${file.id}" ${file.include ? 'checked' : ''} aria-label="Inclure ${escapeHTML(file.name)}"></td></tr>`;
+      return `<tr data-row="${file.id}" class="${file.duplicateOf ? 'duplicate-row' : ''}"><td><div class="file-cell"><span class="file-symbol">${categoryColor(file.category)}</span><div class="file-copy"><div class="file-name" title="${escapeHTML(file.name)}">${escapeHTML(file.name)}</div><div class="file-path" title="${escapeHTML(file.filePath)}">${escapeHTML(file.filePath)}</div><div class="review-marks">${badges}</div></div></div></td><td><select class="type-select" data-category="${file.id}" aria-label="Type de ${escapeHTML(file.name)}">${CATEGORIES.map((category) => `<option${file.category === category ? ' selected' : ''}>${escapeHTML(category)}</option>`).join('')}</select></td><td><div class="destination-cell"><span class="folder-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 5.5h6l1.4 1.6H18v8.9H2z"/><path d="M2 5.5V4h6l1.4 1.6"/></svg></span>${destination}</div></td><td class="size-cell">${bytesLabel(file.size)}</td><td class="duration-cell">${durationLabel(file.duration)}</td><td><input class="row-toggle" type="checkbox" data-include="${file.id}" ${file.include ? 'checked' : ''} aria-label="Inclure ${escapeHTML(file.name)}"></td></tr>`;
     }).join('');
   }
 
@@ -180,6 +186,7 @@ function renderTable() {
     input.addEventListener('change', () => {
       const file = state.files.find((item) => item.id === input.dataset.file);
       if (file) file[input.dataset.edit] = input.value;
+      renderTable();
     });
   });
   document.querySelectorAll('[data-include]').forEach((checkbox) => {
@@ -194,8 +201,24 @@ function renderTable() {
 }
 
 function updateReviewCount() {
-  const count = state.files.filter((file) => rowReviewText(file)).length;
+  const count = state.files.filter((file) => reviewReasons(file).length).length;
   $('reviewLabel').textContent = `${count} élément${count > 1 ? 's' : ''} à vérifier`;
+}
+
+function renderReviewFilters() {
+  const counts = new Map();
+  for (const file of state.files) {
+    for (const reason of reviewReasons(file)) counts.set(reason.id, (counts.get(reason.id) || 0) + 1);
+  }
+  const labels = { empty: 'Fichiers vides', analysis: 'Analyse à confirmer', camera: 'Caméra à identifier', date: 'Date de repli', duplicate: 'Doublons probables' };
+  const filters = [...counts].map(([id, count]) => `<button class="review-filter${state.reviewFilter === id ? ' active' : ''}" data-review-filter="${id}" aria-pressed="${state.reviewFilter === id}">${labels[id]} <span>${count}</span></button>`).join('');
+  $('reviewFilters').innerHTML = filters;
+  $('reviewFilters').hidden = !filters;
+  document.querySelectorAll('[data-review-filter]').forEach((button) => button.addEventListener('click', () => {
+    state.reviewFilter = state.reviewFilter === button.dataset.reviewFilter ? '' : button.dataset.reviewFilter;
+    state.page = 0;
+    renderTable();
+  }));
 }
 
 function setScanProgress(progress) {
@@ -209,6 +232,7 @@ function setScanProgress(progress) {
 
 async function scanSelectedSources() {
   if (!state.sourcePaths.length) return;
+  state.reviewFilter = '';
   state.scanning = true;
   $('scanProgress').hidden = false;
   $('toOptions').disabled = true;
@@ -259,7 +283,7 @@ function prepareOptionsView() {
   const files = includedFiles();
   const size = files.reduce((sum, file) => sum + file.size, 0);
   const rushes = files.filter((file) => file.category === 'Rushs');
-  const reviews = files.filter((file) => rowReviewText(file)).length;
+  const reviews = files.filter((file) => reviewReasons(file).length).length;
   const summary = [
     ['project', $('projectName').value.trim(), 'Projet Resolve'],
     ['media', `${files.length}`, 'Médias retenus'],

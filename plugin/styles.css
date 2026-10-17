@@ -119,6 +119,15 @@ h2 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
 .muted { color: var(--secondary); }
 .size-cell,.duration-cell { color: #d0d4da; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .review-mark { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--amber); font-size: 9px; }
+.review-marks { display: flex; flex-wrap: wrap; gap: 0 8px; }
+.review-mark.empty-mark { color: #ff8f8f; }
+.review-mark.analysis-mark { color: #c3a8ff; }
+.review-mark.duplicate-mark { color: #e4a63c; }
+.review-filters { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 0 8px; }
+.review-filter { display: inline-flex; align-items: center; gap: 7px; min-height: 25px; padding: 0 9px; border: 1px solid #3b4048; border-radius: 14px; background: #1b1e22; color: #c4cad2; font-size: 11px; cursor: pointer; }
+.review-filter span { color: #f0bd61; font-variant-numeric: tabular-nums; }
+.review-filter:hover,.review-filter.active { border-color: #8b713f; background: #28231b; color: #f3d28e; }
+.review-explanation { margin: 0 0 8px; color: var(--secondary); font-size: 11px; line-height: 1.4; }
 .row-toggle { width: 14px; height: 14px; accent-color: var(--red); cursor: pointer; }
 .duplicate-row { background: #201c18; }
 .empty-filter { padding: 32px !important; color: var(--secondary) !important; text-align: center; }
