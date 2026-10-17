@@ -103,6 +103,19 @@ h2 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
 .bin-edit-row button:disabled { opacity: .35; cursor: not-allowed; }
 .bin-edit-row button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 
+.bin-preference-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+.bin-preference-status { margin: 8px 0 0; color: #70c99a; font-size: 12px; }
+.structure-preview { margin: 0 0 14px; padding: 0 0 12px; border-bottom: 1px solid var(--line); }
+.structure-preview-heading p,.camera-merge-heading p { margin: 4px 0 0; color: var(--secondary); font-size: 12px; }
+.structure-tree { max-height: 164px; overflow: auto; margin: 9px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: #141619; color: #d6dbe2; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+.camera-merge { margin: 0 0 14px; padding: 0 0 12px; border-bottom: 1px solid var(--line); }
+.camera-merge-list { display: grid; max-height: 150px; overflow: auto; margin-top: 8px; }
+.camera-merge-row { display: flex; min-height: 43px; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line-soft); }
+.camera-merge-copy { display: flex; min-width: 0; flex-wrap: wrap; align-items: baseline; gap: 7px; color: var(--secondary); font-size: 12px; }
+.camera-merge-copy strong { color: var(--text); font-size: 12px; font-weight: 600; }
+.camera-merge-copy small { color: var(--muted); font-size: 12px; }
+.camera-merge-row > button { flex: 0 0 auto; }
+
 .table-heading { display: flex; min-height: 50px; align-items: center; justify-content: space-between; gap: 18px; padding-top: 8px; border-top: 1px solid var(--line); }
 .table-heading > div:first-child { display: flex; align-items: center; gap: 14px; }
 .review-count { display: inline-flex; align-items: center; gap: 6px; color: var(--amber); font-size: 12px; }

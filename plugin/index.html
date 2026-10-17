@@ -48,7 +48,7 @@
         </div>
         <div class="view-footer">
           <div class="connection-wrap"><span class="muted" id="connectionState">Connexion à Resolve…</span><button class="button secondary compact" id="retryConnection" hidden>Reconnecter</button></div>
-          <button class="button primary" id="toSources">Continuer</button>
+          <button class="button primary" id="toSources" disabled>Continuer</button>
         </div>
       </section>
 
@@ -130,7 +130,23 @@
             <button class="button secondary compact" id="addBin" type="button">Ajouter un chutier</button>
           </div>
           <div class="bin-editor-list" id="binEditorList"></div>
-          <p class="bin-editor-note" id="binEditorNote" role="status" aria-live="polite">Affecte les médias à l’étape Sources. Un chutier utilisé ne peut pas être supprimé.</p>
+          <p class="bin-editor-note">Affecte les médias à l’étape Sources. Un chutier utilisé ne peut pas être supprimé.</p>
+          <p class="bin-editor-note">La structure préférée est enregistrée localement sur ce Mac.</p>
+          <div class="bin-preference-actions">
+            <button class="button secondary compact" id="saveBinPreferences" type="button">Enregistrer comme structure préférée</button>
+            <button class="button secondary compact" id="resetBinPreferences" type="button">Revenir au modèle de base</button>
+          </div>
+          <p class="bin-preference-status" id="binPreferenceStatus" role="status" aria-live="polite" hidden></p>
+        </section>
+        <section class="structure-preview" aria-labelledby="structurePreviewTitle">
+          <div class="structure-preview-heading">
+            <div><h2 id="structurePreviewTitle">Aperçu dans Resolve</h2><p>La structure qui sera créée dans le Media Pool, avec les rushs retenus.</p></div>
+          </div>
+          <pre class="structure-tree" id="structureTree" aria-label="Arborescence prévisionnelle"></pre>
+        </section>
+        <section class="camera-merge" id="cameraMerge" aria-labelledby="cameraMergeTitle" hidden>
+          <div class="camera-merge-heading"><div><h2 id="cameraMergeTitle">Noms de caméra proches</h2><p>Les suggestions ne changent rien tant que tu ne les confirmes pas.</p></div></div>
+          <div class="camera-merge-list" id="cameraMergeList"></div>
         </section>
         <div class="summary-strip" id="creationSummary"></div>
         <div class="options-list">

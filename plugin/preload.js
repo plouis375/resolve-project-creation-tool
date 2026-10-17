@@ -2,6 +2,9 @@ const { contextBridge, ipcRenderer } = require('electron/renderer');
 
 contextBridge.exposeInMainWorld('projectTool', {
   getStatus: () => ipcRenderer.invoke('tool:status'),
+  loadBinPreferences: () => ipcRenderer.invoke('tool:load-bin-preferences'),
+  saveBinPreferences: (folders) => ipcRenderer.invoke('tool:save-bin-preferences', folders),
+  resetBinPreferences: () => ipcRenderer.invoke('tool:reset-bin-preferences'),
   reconnect: () => ipcRenderer.invoke('tool:reconnect'),
   chooseSources: () => ipcRenderer.invoke('tool:choose-sources'),
   scanSources: (operationId, paths, previousScanId, activePaths, previousFiles, forceRefresh) => ipcRenderer.invoke('tool:scan-sources', operationId, paths, previousScanId, activePaths, previousFiles, forceRefresh),

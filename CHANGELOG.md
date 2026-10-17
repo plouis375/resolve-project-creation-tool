@@ -1,5 +1,11 @@
 # Historique des versions
 
+## v0.13 — 17 octobre 2026
+
+- Permet d’enregistrer localement une structure de chutiers préférée et de rétablir le modèle de base.
+- Affiche l’arborescence prévisionnelle du Media Pool, y compris les groupes caméra, modèles et dates.
+- Repère les noms de marque ou de modèle proches et propose de les regrouper après confirmation.
+
 ## v0.12 — 17 octobre 2026
 
 - Ajoute un bouton pour relire tous les dossiers sources et détecter les nouveaux médias ou les fichiers retirés.

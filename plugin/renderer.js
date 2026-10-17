@@ -8,6 +8,11 @@ const state = {
   scanId: '',
   files: [],
   folders: DEFAULT_FOLDERS.map((folder) => ({ ...folder })),
+  folderPreferencesLoaded: false,
+  folderPreferenceBusy: false,
+  preferredFoldersCustomized: false,
+  binPreferenceStatus: '',
+  cameraSuggestions: [],
   filter: '',
   reviewFilter: '',
   page: 0,
@@ -65,11 +70,11 @@ function formatSummary() {
   $('mediaSummary').textContent = state.files.length
     ? `${files.length} média${files.length > 1 ? 's' : ''} retenu${files.length > 1 ? 's' : ''} · ${bytesLabel(size)} · ${state.files.length - files.length} ignoré${state.files.length - files.length > 1 ? 's' : ''}`
     : state.sourcePaths.length ? 'Aucun média détecté dans les dossiers sélectionnés' : 'Aucun dossier sélectionné';
-  $('toOptions').disabled = !state.files.length || !files.length || !state.scanId || state.scanning || state.duplicateCheckBusy || !state.connected;
+  $('toOptions').disabled = !state.files.length || !files.length || !state.scanId || state.scanning || state.duplicateCheckBusy || !state.connected || !state.folderPreferencesLoaded;
 }
 
 function setStep(step) {
-  if (step > 1 && !state.connected) return;
+  if (step > 1 && (!state.connected || !state.folderPreferencesLoaded)) return;
   if ((state.scanning || state.duplicateCheckBusy) && step !== 2) return;
   if (step > 2 && !state.files.length) return;
   state.step = step;
@@ -98,12 +103,226 @@ function renderBins() {
   $('binPreview').innerHTML = state.folders.map(({ name }) => `<span class="bin-chip"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5h5l1.6 1.7h8.4v7.3H2.5z"/><path d="M2.5 5.5V4h5l1.6 1.7"/></svg>${escapeHTML(name)}</span>`).join('');
 }
 
+function cameraFolderName(value) {
+  return String(value || '').replace(/[\\/:\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'À identifier';
+}
+
+function renderStructurePreview() {
+  const tree = [$('projectName').value.trim() || 'Nouveau projet'];
+  const files = includedFiles();
+  const sortNames = (values) => [...values].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' }));
+  const addNode = (label, ancestors, last) => {
+    const prefix = ancestors.map((isLast) => isLast ? '   ' : '│  ').join('');
+    tree.push(`${prefix}${last ? '└── ' : '├── '}${label}`);
+  };
+  state.folders.forEach((folder, rootIndex) => {
+    const lastRoot = rootIndex === state.folders.length - 1;
+    const matching = files.filter((file) => file.category === folder.id);
+    addNode(`${folder.name} (${matching.length || 'vide'})`, [], lastRoot);
+    if (folder.id !== 'Rushs' || !matching.length) return;
+    const brands = new Map();
+    for (const file of matching) {
+      const brand = cameraFolderName(file.cameraBrand);
+      const model = cameraFolderName(file.cameraModel);
+      const date = cameraFolderName(file.shootingDate || 'Date inconnue');
+      if (!brands.has(brand)) brands.set(brand, new Map());
+      const models = brands.get(brand);
+      if (!models.has(model)) models.set(model, new Map());
+      const dates = models.get(model);
+      dates.set(date, (dates.get(date) || 0) + 1);
+    }
+    const brandNames = sortNames(brands.keys());
+    brandNames.forEach((brand, brandIndex) => {
+      const brandLast = brandIndex === brandNames.length - 1;
+      const models = brands.get(brand);
+      const brandCount = [...models.values()].reduce((sum, dates) => sum + [...dates.values()].reduce((subtotal, count) => subtotal + count, 0), 0);
+      addNode(`${brand} (${brandCount})`, [lastRoot], brandLast);
+      const modelNames = sortNames(models.keys());
+      modelNames.forEach((model, modelIndex) => {
+        const modelLast = modelIndex === modelNames.length - 1;
+        const dates = models.get(model);
+        const modelCount = [...dates.values()].reduce((sum, count) => sum + count, 0);
+        addNode(`${model} (${modelCount})`, [lastRoot, brandLast], modelLast);
+        const dateNames = sortNames(dates.keys());
+        dateNames.forEach((date, dateIndex) => addNode(`${date} (${dates.get(date)})`, [lastRoot, brandLast, modelLast], dateIndex === dateNames.length - 1));
+      });
+    });
+  });
+  $('structureTree').textContent = tree.join('\n');
+}
+
+function normalizedCameraName(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr').replace(/[^a-z0-9]/g, '');
+}
+
+function closeCameraName(left, right) {
+  if (!left || !right) return false;
+  if (left === right) return true;
+  if (Math.abs(left.length - right.length) > 1 || Math.min(left.length, right.length) < 5) return false;
+  let i = 0;
+  let j = 0;
+  let differences = 0;
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) { i += 1; j += 1; continue; }
+    if (++differences > 1) return false;
+    if (left.length > right.length) i += 1;
+    else if (right.length > left.length) j += 1;
+    else { i += 1; j += 1; }
+  }
+  return true;
+}
+
+function findCameraNameSuggestions(files, property, contextKey = '') {
+  const contexts = new Map();
+  for (const file of files) {
+    const context = contextKey ? normalizedCameraName(file.cameraBrand) || 'unknown' : '';
+    if (contextKey && context !== contextKey) continue;
+    const value = String(file[property] || '').trim();
+    if (!value || value === 'À identifier') continue;
+    if (!contexts.has(context)) contexts.set(context, new Map());
+    const variants = contexts.get(context);
+    variants.set(value, (variants.get(value) || 0) + 1);
+  }
+  const suggestions = [];
+  for (const [context, values] of contexts) {
+    const variants = [...values].map(([value, count]) => ({ value, count, normalized: normalizedCameraName(value) }))
+      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'fr', { sensitivity: 'base' }));
+    const canonicalNames = [];
+    for (const variant of variants) {
+      const canonical = canonicalNames.find((item) => closeCameraName(item.normalized, variant.normalized));
+      if (!canonical) {
+        canonicalNames.push(variant);
+        continue;
+      }
+      if (canonical.value === variant.value) continue;
+      suggestions.push({
+        property,
+        from: variant.value,
+        to: canonical.value,
+        context,
+        count: variant.count
+      });
+    }
+  }
+  return suggestions;
+}
+
+function getCameraNameSuggestions() {
+  const rushes = includedFiles().filter((file) => file.category === 'Rushs');
+  const suggestions = findCameraNameSuggestions(rushes, 'cameraBrand');
+  const brands = [...new Set(rushes.map((file) => normalizedCameraName(file.cameraBrand)).filter(Boolean))];
+  for (const brand of brands) {
+    const brandName = rushes.find((file) => normalizedCameraName(file.cameraBrand) === brand)?.cameraBrand || brand;
+    suggestions.push(...findCameraNameSuggestions(rushes, 'cameraModel', brand).map((item) => ({ ...item, brand: brandName })));
+  }
+  return suggestions;
+}
+
+function renderCameraSuggestions() {
+  state.cameraSuggestions = getCameraNameSuggestions();
+  $('cameraMerge').hidden = !state.cameraSuggestions.length;
+  $('cameraMergeList').innerHTML = state.cameraSuggestions.map((item, index) => {
+    const type = item.property === 'cameraBrand' ? 'Marque' : `Modèle · ${item.brand || item.context}`;
+    return `<div class="camera-merge-row"><div class="camera-merge-copy"><span>${escapeHTML(type)}</span><strong>${escapeHTML(item.from)}</strong><span aria-hidden="true">→</span><strong>${escapeHTML(item.to)}</strong><small>${item.count} média${item.count === 1 ? '' : 's'} concernés</small></div><button class="button secondary compact" type="button" data-camera-merge="${index}" aria-label="Regrouper ${escapeHTML(item.from)} sous ${escapeHTML(item.to)}">Regrouper</button></div>`;
+  }).join('');
+}
+
+function applyCameraMerge(suggestion) {
+  for (const file of state.files) {
+    if (file.category !== 'Rushs' || file[suggestion.property] !== suggestion.from) continue;
+    if (suggestion.property === 'cameraModel' && normalizedCameraName(file.cameraBrand) !== suggestion.context) continue;
+    file[suggestion.property] = suggestion.to;
+  }
+  renderTable();
+  renderProjectPreview();
+  showToast(`${suggestion.from} regroupé sous ${suggestion.to}.`);
+}
+
+function renderProjectPreview() {
+  renderStructurePreview();
+  renderCameraSuggestions();
+}
+
+function matchesBaseBins() {
+  return state.folders.length === DEFAULT_FOLDERS.length && state.folders.every((folder, index) => folder.id === DEFAULT_FOLDERS[index].id && folder.name === DEFAULT_FOLDERS[index].name);
+}
+
+async function loadBinPreferences() {
+  try {
+    const result = await window.projectTool.loadBinPreferences();
+    state.folders = result.folders.map((folder) => ({ ...folder, core: DEFAULT_FOLDERS.some((item) => item.id === folder.id) }));
+    state.preferredFoldersCustomized = result.customized;
+    state.binPreferenceStatus = result.customized ? 'Structure préférée chargée. Enregistre les changements pour les garder.' : '';
+  } catch (error) {
+    state.folders = DEFAULT_FOLDERS.map((folder) => ({ ...folder }));
+    state.binPreferenceStatus = '';
+    showToast(error.message || 'La structure préférée est indisponible; le modèle de base est chargé.');
+  } finally {
+    state.folderPreferencesLoaded = true;
+    renderBins();
+    renderBinEditor();
+    renderTable();
+    refreshStatus();
+  }
+}
+
+async function savePreferredBins() {
+  if (state.folderPreferenceBusy) return;
+  state.folderPreferenceBusy = true;
+  renderBinEditor();
+  try {
+    const result = await window.projectTool.saveBinPreferences(state.folders.map(({ id, name }) => ({ id, name })));
+    state.folders = result.folders.map((folder) => ({ ...folder, core: DEFAULT_FOLDERS.some((item) => item.id === folder.id) }));
+    state.preferredFoldersCustomized = true;
+    state.binPreferenceStatus = 'Structure préférée enregistrée pour les prochains projets.';
+    showToast('Structure préférée enregistrée pour les prochains projets.');
+  } catch (error) {
+    showToast(error.message || 'Impossible d’enregistrer la structure préférée.');
+  } finally {
+    state.folderPreferenceBusy = false;
+    renderBins();
+    renderBinEditor();
+    renderTable();
+    renderProjectPreview();
+  }
+}
+
+async function resetPreferredBins() {
+  if (state.folderPreferenceBusy) return;
+  const baseIds = new Set(DEFAULT_FOLDERS.map((folder) => folder.id));
+  if (state.files.some((file) => !baseIds.has(file.category))) {
+    showToast('Reclasse les médias des chutiers ajoutés avant de revenir au modèle de base.');
+    return;
+  }
+  state.folderPreferenceBusy = true;
+  renderBinEditor();
+  try {
+    const result = await window.projectTool.resetBinPreferences();
+    state.folders = result.folders.map((folder) => ({ ...folder, core: true }));
+    state.preferredFoldersCustomized = false;
+    state.binPreferenceStatus = '';
+    showToast('Modèle de base rétabli pour ce projet et les suivants.');
+  } catch (error) {
+    showToast(error.message || 'Impossible de réinitialiser la structure préférée.');
+  } finally {
+    state.folderPreferenceBusy = false;
+    renderBins();
+    renderBinEditor();
+    renderTable();
+    renderProjectPreview();
+  }
+}
+
 function renderBinEditor() {
   $('binEditorList').innerHTML = state.folders.map((folder) => {
     const used = state.files.filter((file) => file.category === folder.id).length;
-    return `<div class="bin-edit-row"><input data-bin-name="${escapeHTML(folder.id)}" value="${escapeHTML(folder.name)}" maxlength="80" aria-label="Nom du chutier"><span>${used} média${used === 1 ? '' : 's'}</span><button type="button" data-remove-bin="${escapeHTML(folder.id)}" aria-label="Retirer le chutier ${escapeHTML(folder.name)}" title="${used ? 'Reclasse d’abord ses médias' : 'Retirer ce chutier'}" ${used ? 'disabled' : ''}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div>`;
+    return `<div class="bin-edit-row"><input data-bin-name="${escapeHTML(folder.id)}" value="${escapeHTML(folder.name)}" maxlength="80" aria-label="Nom du chutier" ${state.folderPreferenceBusy ? 'disabled' : ''}><span>${used} média${used === 1 ? '' : 's'}</span><button type="button" data-remove-bin="${escapeHTML(folder.id)}" aria-label="Retirer le chutier ${escapeHTML(folder.name)}" title="${used ? 'Reclasse d’abord ses médias' : 'Retirer ce chutier'}" ${used || state.folderPreferenceBusy ? 'disabled' : ''}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div>`;
   }).join('');
-  $('addBin').disabled = state.scanning || state.duplicateCheckBusy;
+  $('addBin').disabled = state.scanning || state.duplicateCheckBusy || state.folderPreferenceBusy || state.folders.length >= 60;
+  $('saveBinPreferences').disabled = state.folderPreferenceBusy || state.scanning || state.duplicateCheckBusy;
+  $('resetBinPreferences').disabled = state.folderPreferenceBusy || state.scanning || state.duplicateCheckBusy || (!state.preferredFoldersCustomized && matchesBaseBins());
+  $('binPreferenceStatus').hidden = !state.binPreferenceStatus;
+  $('binPreferenceStatus').textContent = state.binPreferenceStatus;
   document.querySelectorAll('[data-bin-name]').forEach((input) => input.addEventListener('change', () => {
     const folder = state.folders.find((item) => item.id === input.dataset.binName);
     if (!folder) return;
@@ -117,6 +336,7 @@ function renderBinEditor() {
     folder.name = name;
     renderBins();
     renderTable();
+    renderProjectPreview();
     renderBinEditor();
   }));
   document.querySelectorAll('[data-remove-bin]').forEach((button) => button.addEventListener('click', () => {
@@ -125,17 +345,23 @@ function renderBinEditor() {
     state.folders = state.folders.filter((item) => item.id !== folder.id);
     renderBinEditor();
     renderBins();
+    renderTable();
+    renderProjectPreview();
   }));
   syncCreateButton();
 }
 
 function addCustomBin() {
+  if (state.folders.length >= 60) return showToast('Un projet ne peut pas contenir plus de 60 chutiers.');
   let name = 'Nouveau chutier';
   let suffix = 2;
   while (state.folders.some((folder) => folder.name.toLocaleLowerCase('fr') === name.toLocaleLowerCase('fr'))) name = `Nouveau chutier ${suffix++}`;
   const folder = { id: `custom-${crypto.randomUUID()}`, name, core: false };
   state.folders.push(folder);
+  renderBins();
   renderBinEditor();
+  renderTable();
+  renderProjectPreview();
   const input = [...document.querySelectorAll('[data-bin-name]')].find((item) => item.dataset.binName === folder.id);
   input?.focus();
   input?.select();
@@ -240,6 +466,7 @@ function renderTable() {
       const file = state.files.find((item) => item.id === select.dataset.category);
       if (file) file.category = select.value;
       renderTable();
+      renderProjectPreview();
     });
   });
   document.querySelectorAll('[data-edit]').forEach((input) => {
@@ -251,6 +478,7 @@ function renderTable() {
       const file = state.files.find((item) => item.id === input.dataset.file);
       if (file) file[input.dataset.edit] = input.value;
       renderTable();
+      renderProjectPreview();
     });
   });
   document.querySelectorAll('[data-include]').forEach((checkbox) => {
@@ -263,6 +491,7 @@ function renderTable() {
       }
       checkbox.closest('tr').classList.toggle('excluded-row', !checkbox.checked);
       formatSummary();
+      renderProjectPreview();
     });
   });
   formatSummary();
@@ -421,6 +650,7 @@ async function refreshSources() {
 function prepareOptionsView() {
   renderBins();
   renderBinEditor();
+  renderProjectPreview();
   const files = includedFiles();
   const size = files.reduce((sum, file) => sum + file.size, 0);
   const rushes = files.filter((file) => file.category === 'Rushs');
@@ -445,7 +675,7 @@ function prepareOptionsView() {
 function syncCreateButton() {
   const files = includedFiles();
   const missingFolder = files.some((file) => !state.folders.some((folder) => folder.id === file.category));
-  $('createNow').disabled = !state.connected || state.creating || !files.length || missingFolder;
+  $('createNow').disabled = !state.connected || state.creating || state.folderPreferenceBusy || !files.length || missingFolder;
 }
 
 function updateCreateProgress(progress) {
@@ -520,7 +750,7 @@ async function refreshStatus() {
       : `Connexion à Resolve indisponible · ${result.error || ''}`;
     $('connectionState').textContent = label;
     $('retryConnection').hidden = result.connected;
-    $('toSources').disabled = !result.connected;
+    $('toSources').disabled = !result.connected || !state.folderPreferencesLoaded;
     formatSummary();
   } catch (_) {
     state.connected = false;
@@ -552,6 +782,14 @@ $('toSources').addEventListener('click', () => setStep(2));
 $('backToProject').addEventListener('click', () => setStep(1));
 $('toOptions').addEventListener('click', () => setStep(3));
 $('addBin').addEventListener('click', addCustomBin);
+$('saveBinPreferences').addEventListener('click', savePreferredBins);
+$('resetBinPreferences').addEventListener('click', resetPreferredBins);
+$('cameraMergeList').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-camera-merge]');
+  const suggestion = state.cameraSuggestions[Number(button?.dataset.cameraMerge)];
+  if (suggestion) applyCameraMerge(suggestion);
+});
+$('projectName').addEventListener('input', renderStructurePreview);
 $('backToSources').addEventListener('click', () => setStep(2));
 $('chooseSources').addEventListener('click', chooseSources);
 $('refreshSources').addEventListener('click', refreshSources);
@@ -570,6 +808,7 @@ $('hideDuplicates').addEventListener('change', (event) => {
   if (event.target.checked) state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = false; file.includeManuallyChanged = true; file.duplicateAutoExcluded = false; file.duplicateManuallyChanged = true; });
   else state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = true; file.includeManuallyChanged = true; file.duplicateAutoExcluded = false; file.duplicateManuallyChanged = true; });
   renderTable();
+  renderProjectPreview();
 });
 $('verifyDuplicates').addEventListener('click', async () => {
   state.duplicateOperationId = crypto.randomUUID();
@@ -591,6 +830,7 @@ $('verifyDuplicates').addEventListener('click', async () => {
     if (result.unreadableGroups) messages.push(`${result.unreadableGroups} groupe(s) non vérifiable(s)`);
     $('duplicateCheckStatus').textContent = messages.join(' · ') || 'Aucun doublon à confirmer.';
     renderTable();
+    renderProjectPreview();
   } catch (error) {
     $('duplicateCheckStatus').textContent = 'La comparaison a échoué.';
     showToast(error.message || 'Comparaison impossible.');
@@ -625,4 +865,4 @@ window.projectTool.onProgress((progress) => {
 renderBins();
 renderSources();
 renderTable();
-refreshStatus();
+loadBinPreferences();

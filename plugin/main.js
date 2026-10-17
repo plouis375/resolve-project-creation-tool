@@ -523,6 +523,46 @@ function safeBinName(value, fallback) {
   return (name || fallback).slice(0, 80);
 }
 
+function defaultBinConfig() {
+  return BIN_NAMES.map((name) => ({ id: name, name }));
+}
+
+function binPreferencesPath() {
+  return path.join(app.getPath('userData'), 'resolve-project-creation-tool-preferences.json');
+}
+
+async function loadBinPreferences() {
+  try {
+    const saved = JSON.parse(await fs.readFile(binPreferencesPath(), 'utf8'));
+    return { folders: normalizeBinConfig(saved.folders), customized: true };
+  } catch (error) {
+    if (error.code === 'ENOENT') return { folders: defaultBinConfig(), customized: false };
+    throw new Error('La structure préférée ne peut pas être lue.');
+  }
+}
+
+async function saveBinPreferences(input) {
+  const folders = normalizeBinConfig(input);
+  const filePath = binPreferencesPath();
+  const temporaryPath = `${filePath}.${crypto.randomUUID()}.tmp`;
+  try {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(temporaryPath, JSON.stringify({ folders }), { encoding: 'utf8', mode: 0o600 });
+    await fs.rename(temporaryPath, filePath);
+    return { folders, customized: true };
+  } catch (error) {
+    await fs.unlink(temporaryPath).catch(() => {});
+    throw new Error('La structure préférée n’a pas pu être enregistrée.');
+  }
+}
+
+async function resetBinPreferences() {
+  try { await fs.unlink(binPreferencesPath()); } catch (error) {
+    if (error.code !== 'ENOENT') throw new Error('La structure préférée n’a pas pu être réinitialisée.');
+  }
+  return { folders: defaultBinConfig(), customized: false };
+}
+
 function normalizeBinConfig(input) {
   const folders = Array.isArray(input) ? input : BIN_NAMES.map((name) => ({ id: name, name }));
   if (folders.length > 60) throw new Error('Un projet ne peut pas contenir plus de 60 chutiers.');
@@ -730,6 +770,9 @@ function dominantFormat(files) {
 }
 
 function registerHandlers() {
+  ipcMain.handle('tool:load-bin-preferences', loadBinPreferences);
+  ipcMain.handle('tool:save-bin-preferences', (_event, folders) => saveBinPreferences(folders));
+  ipcMain.handle('tool:reset-bin-preferences', resetBinPreferences);
   ipcMain.handle('tool:status', async () => {
     let currentProject = '';
     if (integrationReady && projectManager) {
