@@ -1,4 +1,4 @@
-# Resolve Project Creation Tool — v0.04
+# Resolve Project Creation Tool — v0.05
 
 Assistant macOS intégré à **DaVinci Resolve Studio** pour créer un projet, trier les médias dans le Media Pool et préparer le montage. Il s’ouvre depuis le menu de Resolve, guide la préparation, puis se ferme quand le projet est prêt.
 
@@ -57,6 +57,8 @@ Les rushs sont classés par marque, modèle et date. Les autres types de média 
 - **Assets graphiques** — PSD, AI, EPS, SVG et PDF.
 - **Séquences** — FCPXML, EDL, AAF, DRT, OTIO et XML autonomes.
 
+Les sous-dossiers `Proxy` créés par Blackmagic Proxy Generator sont ignorés pendant le scan; les fichiers originaux restent détectés dans leur emplacement source.
+
 Les fichiers cachés sont ignorés. Quand un fichier vidéo Canon possède un XML homonyme à côté de lui, ce XML est traité comme une fiche de métadonnées : sa marque et son modèle peuvent servir au classement, et il n’apparaît pas comme séquence à importer. Les XML sans vidéo associée restent considérés comme des séquences.
 
 L’analyse utilise d’abord les métadonnées lues par `ffprobe`. Les champs de caméra non détectés restent modifiables avant la création. Pour la date, l’outil utilise les métadonnées disponibles, puis la date de création du fichier comme repli. Une date de repli est signalée.
@@ -79,7 +81,7 @@ Cette option prépare une timeline de départ; elle ne crée pas de montage édi
 
 Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; il peut donc traiter des fichiers qui ont été exclus de la liste d’import du plugin. Les proxies sont écrits dans des sous-dossiers `proxy` à côté des médias. Resolve associe automatiquement les proxies reconnus à leurs originaux. L’outil ne change pas le format, la résolution ni le réglage de démarrage du générateur. Selon ce dernier réglage, le traitement peut démarrer automatiquement à l’ouverture. Les dossiers enregistrés restent surveillés jusqu’à ce que tu les retires dans l’application. L’outil met à jour le fichier de préférences local de Blackmagic Proxy Generator; Blackmagic ne documente pas d’API publique pour cette opération, donc une évolution de son format de préférences pourrait nécessiter une mise à jour du plugin.
 
-## Autres fonctions non disponibles en v0.04
+## Autres fonctions non disponibles en v0.05
 
 - **Archivage** — Aucun archivage de projet n’est proposé; cette fonction n’est pas prévue dans le périmètre actuel.
 - **Dossiers Finder et sauvegarde des médias** — Le plugin organise les chutiers Resolve et conserve les médias à leur emplacement. Il ne crée pas une arborescence disque et ne réalise pas de copie de sauvegarde.

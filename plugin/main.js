@@ -207,6 +207,10 @@ function categoryFor(extension) {
   return null;
 }
 
+function isProxyDirectory(name) {
+  return name.toLocaleLowerCase('en-US') === 'proxy';
+}
+
 async function scanDirectory(root) {
   const resolved = await fs.realpath(root);
   const stat = await fs.stat(resolved);
@@ -222,7 +226,7 @@ async function scanDirectory(root) {
       if (entry.name.startsWith('.')) continue;
       const filePath = path.join(current, entry.name);
       if (entry.isDirectory()) {
-        if (!entry.name.endsWith('.app') && !entry.name.endsWith('.bundle')) pending.push(filePath);
+        if (!entry.name.endsWith('.app') && !entry.name.endsWith('.bundle') && !isProxyDirectory(entry.name)) pending.push(filePath);
         continue;
       }
       if (!entry.isFile()) continue;

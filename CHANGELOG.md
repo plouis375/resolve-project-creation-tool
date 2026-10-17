@@ -1,5 +1,9 @@
 # Historique des versions
 
+## v0.05 — 17 octobre 2026
+
+- Ignore les sous-dossiers `Proxy` créés par Blackmagic Proxy Generator lors du scan des médias.
+
 ## v0.04 — 17 octobre 2026
 
 - Ajoute automatiquement les dossiers sources à la liste surveillée de Blackmagic Proxy Generator, sans doublons et sans retirer les dossiers existants.
