@@ -54,7 +54,8 @@ The user wants a clear, restrained, polished interface that feels at home in DaV
 ## Evidence on Hand
 
 - The installed Resolve 21.1.0 developer documentation is available on this Mac at `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/`.
-- No representative source clips, camera samples, or approved visual assets have been supplied yet.
+- A user-supplied sample of seven Canon EOS C70 MXF clips with paired XML sidecars was scanned. The plugin identified the camera model and filtered the sidecars from the sequence list; the user confirmed the Resolve workflow works after installing the corrected v0.02 package.
+- Other camera brands and media formats have not been systematically validated.
 
 ## Product Principles
 
