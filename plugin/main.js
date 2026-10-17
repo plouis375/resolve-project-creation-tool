@@ -29,9 +29,34 @@ let integrationError = '';
 let creationInProgress = false;
 let ffprobePath;
 const scanSnapshots = new Map();
+const operations = new Map();
 
 function sendProgress(event, payload) {
   if (!event.sender.isDestroyed()) event.sender.send('tool:progress', payload);
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) {
+    const error = new Error('Opération interrompue.');
+    error.name = 'AbortError';
+    throw error;
+  }
+}
+
+function runOperation(event, operationId, task) {
+  if (typeof operationId !== 'string' || !operationId) throw new Error('Identifiant d’opération invalide.');
+  if (operations.has(operationId)) throw new Error('Cette opération est déjà en cours.');
+  const controller = new AbortController();
+  const onDestroyed = () => controller.abort();
+  operations.set(operationId, controller);
+  event.sender.once('destroyed', onDestroyed);
+  return Promise.resolve().then(() => task(controller.signal)).catch((error) => {
+    if (error?.name === 'AbortError') return { cancelled: true };
+    throw error;
+  }).finally(() => {
+    event.sender.removeListener('destroyed', onDestroyed);
+    operations.delete(operationId);
+  });
 }
 
 async function connectResolve() {
@@ -149,13 +174,14 @@ function frameRate(streams) {
   return { width: stream.width, height: stream.height, fps: Number.isFinite(fps) ? Number(fps.toFixed(3)) : null };
 }
 
-async function probeWithFFprobe(filePath) {
+async function probeWithFFprobe(filePath, signal) {
   const probe = await findFFprobe();
   if (!probe) return null;
   try {
     const { stdout } = await execFileAsync(probe, ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', filePath], {
       timeout: 20000,
-      maxBuffer: 2 * 1024 * 1024
+      maxBuffer: 2 * 1024 * 1024,
+      signal
     });
     const data = JSON.parse(stdout);
     const streams = data.streams || [];
@@ -170,14 +196,15 @@ async function probeWithFFprobe(filePath) {
       verified: streams.length > 0
     };
   } catch (_) {
+    throwIfAborted(signal);
     return { verified: false };
   }
 }
 
-async function probeWithSpotlight(filePath) {
+async function probeWithSpotlight(filePath, signal) {
   const names = ['kMDItemAcquisitionMake', 'kMDItemAcquisitionModel', 'kMDItemContentCreationDate', 'kMDItemDurationSeconds', 'kMDItemPixelWidth', 'kMDItemPixelHeight'];
   try {
-    const { stdout } = await execFileAsync('/usr/bin/mdls', [...names.flatMap((name) => ['-name', name]), filePath], { timeout: 8000, maxBuffer: 64 * 1024 });
+    const { stdout } = await execFileAsync('/usr/bin/mdls', [...names.flatMap((name) => ['-name', name]), filePath], { timeout: 8000, maxBuffer: 64 * 1024, signal });
     const values = Object.fromEntries(stdout.split('\n').map((line) => {
       const index = line.indexOf(' = ');
       return index < 0 ? ['', ''] : [line.slice(0, index).trim(), line.slice(index + 3).trim().replace(/^"|"$/g, '')];
@@ -195,6 +222,7 @@ async function probeWithSpotlight(filePath) {
       verified: Boolean(width || height || duration || values.kMDItemContentCreationDate)
     };
   } catch (_) {
+    throwIfAborted(signal);
     return { verified: false };
   }
 }
@@ -212,7 +240,7 @@ function isProxyDirectory(name) {
   return name.toLocaleLowerCase('en-US') === 'proxy';
 }
 
-async function scanDirectory(root) {
+async function scanDirectory(root, signal) {
   const resolved = await fs.realpath(root);
   const stat = await fs.stat(resolved);
   if (!stat.isDirectory()) throw new Error(`Dossier source invalide : ${root}`);
@@ -220,10 +248,13 @@ async function scanDirectory(root) {
   const canonSidecars = new Set();
   const pending = [resolved];
   while (pending.length) {
+    throwIfAborted(signal);
     const current = pending.pop();
     const entries = await fs.readdir(current, { withFileTypes: true });
+    throwIfAborted(signal);
     entries.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
     for (const entry of entries) {
+      throwIfAborted(signal);
       if (entry.name.startsWith('.')) continue;
       const filePath = path.join(current, entry.name);
       if (entry.isDirectory()) {
@@ -244,12 +275,14 @@ async function scanDirectory(root) {
   return files.filter((file) => !canonSidecars.has(path.resolve(file.filePath)));
 }
 
-async function enrichFile(file) {
+async function enrichFile(file, signal) {
+  throwIfAborted(signal);
   const stat = await fs.stat(file.filePath);
   const [probe, fallback] = await Promise.all([
-    probeWithFFprobe(file.filePath),
-    findFFprobe().then((probePath) => probePath ? null : probeWithSpotlight(file.filePath))
+    probeWithFFprobe(file.filePath, signal),
+    findFFprobe().then((probePath) => probePath ? null : probeWithSpotlight(file.filePath, signal))
   ]);
+  throwIfAborted(signal);
   const metadata = { ...(probe || fallback || { verified: false }) };
   if (VIDEO.has(file.extension) && (!metadata.cameraMake || !metadata.cameraModel)) {
     const sidecar = await readCanonSidecar(file.filePath);
@@ -258,6 +291,7 @@ async function enrichFile(file) {
       metadata.cameraModel ||= sidecar.cameraModel;
     }
   }
+  throwIfAborted(signal);
   const rawMake = metadata.cameraMake || '';
   const rawModel = metadata.cameraModel || '';
   const shootingDate = metadata.date || localDate(stat.birthtime);
@@ -302,14 +336,16 @@ function markDuplicates(files) {
   }
 }
 
-async function scanSources(event, paths) {
+async function scanSources(event, paths, signal) {
   if (!Array.isArray(paths) || !paths.length) throw new Error('Choisis au moins un dossier source.');
   const roots = [...new Set(paths.map((item) => path.resolve(item)))];
   const allFiles = [];
   for (let index = 0; index < roots.length; index += 1) {
-    const files = await scanDirectory(roots[index]);
+    throwIfAborted(signal);
+    const files = await scanDirectory(roots[index], signal);
     allFiles.push(...files.map((file) => ({ ...file, sourceFolder: roots[index] })));
   }
+  throwIfAborted(signal);
   const seenPaths = new Set();
   const uniqueFiles = allFiles.filter((file) => {
     const key = path.resolve(file.filePath);
@@ -324,8 +360,9 @@ async function scanSources(event, paths) {
   let completed = 0;
   async function worker() {
     while (cursor < uniqueFiles.length) {
+      throwIfAborted(signal);
       const index = cursor++;
-      results[index] = await enrichFile(uniqueFiles[index]);
+      results[index] = await enrichFile(uniqueFiles[index], signal);
       completed += 1;
       if (completed % 5 === 0 || completed === uniqueFiles.length) {
         sendProgress(event, { stage: 'scan', current: completed, total: uniqueFiles.length, label: 'Analyse des médias' });
@@ -333,6 +370,7 @@ async function scanSources(event, paths) {
     }
   }
   await Promise.all(Array.from({ length: Math.min(4, uniqueFiles.length) }, worker));
+  throwIfAborted(signal);
   markDuplicates(results);
   scanSnapshots.clear();
   const scanId = crypto.randomUUID();
@@ -345,17 +383,17 @@ async function scanSources(event, paths) {
   };
 }
 
-function hashFile(filePath) {
+function hashFile(filePath, signal) {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('sha256');
-    const stream = createReadStream(filePath);
+    const stream = createReadStream(filePath, { signal });
     stream.on('data', (chunk) => hash.update(chunk));
     stream.on('error', reject);
     stream.on('end', () => resolve(hash.digest('hex')));
   });
 }
 
-async function verifyDuplicateContents(event, options) {
+async function verifyDuplicateContents(event, options, signal) {
   const scanId = options?.scanId;
   const files = scanSnapshots.get(scanId);
   if (!files) throw new Error('Analyse expirée. Reprends la sélection des dossiers.');
@@ -382,14 +420,16 @@ async function verifyDuplicateContents(event, options) {
   let distinctFiles = 0;
   let unreadableGroups = 0;
   let cursor = 0;
+  const originalFiles = files.map((file) => ({ ...file }));
   async function worker() {
     while (cursor < jobs.length) {
+      throwIfAborted(signal);
       const group = jobs[cursor++];
       let processed = 0;
       try {
         const hashes = [];
         for (const file of group) {
-          hashes.push(await hashFile(file.filePath));
+          hashes.push(await hashFile(file.filePath, signal));
           processed += 1;
           completed += 1;
           sendProgress(event, { stage: 'duplicate-check', current: completed, total, label: 'Comparaison du contenu' });
@@ -415,6 +455,7 @@ async function verifyDuplicateContents(event, options) {
           if (cluster.length > 1) identicalGroups += 1;
         }
       } catch (_) {
+        throwIfAborted(signal);
         for (const file of group.slice(1)) file.duplicateVerification = 'unreadable';
         unreadableGroups += 1;
         completed += group.length - processed;
@@ -422,7 +463,12 @@ async function verifyDuplicateContents(event, options) {
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(2, jobs.length) }, worker));
+  try {
+    await Promise.all(Array.from({ length: Math.min(2, jobs.length) }, worker));
+  } catch (error) {
+    if (signal?.aborted) originalFiles.forEach((file, index) => { files[index] = file; });
+    throw error;
+  }
   return { identicalGroups, distinctFiles, unreadableGroups };
 }
 
@@ -642,8 +688,14 @@ function registerHandlers() {
     });
     return result.canceled ? [] : result.filePaths;
   });
-  ipcMain.handle('tool:scan-sources', (event, paths) => scanSources(event, paths));
-  ipcMain.handle('tool:verify-duplicates', (event, options) => verifyDuplicateContents(event, options));
+  ipcMain.handle('tool:scan-sources', (event, operationId, paths) => runOperation(event, operationId, (signal) => scanSources(event, paths, signal)));
+  ipcMain.handle('tool:verify-duplicates', (event, operationId, options) => runOperation(event, operationId, (signal) => verifyDuplicateContents(event, options, signal)));
+  ipcMain.handle('tool:cancel-operation', (_event, operationId) => {
+    const controller = operations.get(operationId);
+    if (!controller) return false;
+    controller.abort();
+    return true;
+  });
   ipcMain.handle('tool:create-project', (event, options) => createProject(event, options));
   ipcMain.handle('tool:open-proxy-generator', async (_event, sourcePaths) => {
     try {

@@ -12,9 +12,11 @@ const state = {
   reviewFilter: '',
   page: 0,
   scanning: false,
+  scanOperationId: '',
   creating: false,
   ffprobeAvailable: false,
   duplicateCheckBusy: false,
+  duplicateOperationId: '',
   toastTimer: null
 };
 
@@ -58,11 +60,12 @@ function formatSummary() {
   $('mediaSummary').textContent = state.files.length
     ? `${files.length} média${files.length > 1 ? 's' : ''} retenu${files.length > 1 ? 's' : ''} · ${bytesLabel(size)} · ${state.files.length - files.length} ignoré${state.files.length - files.length > 1 ? 's' : ''}`
     : 'Aucun dossier sélectionné';
-  $('toOptions').disabled = !state.files.length || !files.length || !state.scanId || state.scanning || !state.connected;
+  $('toOptions').disabled = !state.files.length || !files.length || !state.scanId || state.scanning || state.duplicateCheckBusy || !state.connected;
 }
 
 function setStep(step) {
   if (step > 1 && !state.connected) return;
+  if ((state.scanning || state.duplicateCheckBusy) && step !== 2) return;
   if (step > 2 && !state.files.length) return;
   state.step = step;
   for (let index = 1; index <= 4; index += 1) {
@@ -91,6 +94,7 @@ function renderBins() {
 }
 
 function renderSources() {
+  $('chooseSources').querySelector('span').textContent = state.scanning ? 'Analyse en cours…' : state.sourcePaths.length && !state.files.length ? 'Relancer l’analyse' : 'Ajouter un dossier';
   if (!state.sourcePaths.length) {
     $('sourceList').innerHTML = '<div class="source-empty">Ajoute les dossiers qui contiennent tes rushs, musiques et éléments.</div>';
     return;
@@ -98,7 +102,7 @@ function renderSources() {
   $('sourceList').innerHTML = state.sourcePaths.map((source) => {
     const count = state.files.filter((file) => file.sourceFolder === source).length;
     const bytes = state.files.filter((file) => file.sourceFolder === source).reduce((sum, file) => sum + file.size, 0);
-    return `<div class="source-card"><span class="folder-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h7l2 2H21v9H3z"/><path d="M3 7.5V6h7l2 2"/></svg></span><div class="source-info"><div class="source-name" title="${escapeHTML(source)}">${escapeHTML(source)}</div><div class="source-meta">${count} média${count > 1 ? 's' : ''}${count ? ` · ${bytesLabel(bytes)}` : ''}</div></div><button class="source-remove" data-remove-source="${escapeHTML(source)}" aria-label="Retirer ce dossier"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div>`;
+    return `<div class="source-card"><span class="folder-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h7l2 2H21v9H3z"/><path d="M3 7.5V6h7l2 2"/></svg></span><div class="source-info"><div class="source-name" title="${escapeHTML(source)}">${escapeHTML(source)}</div><div class="source-meta">${count} média${count > 1 ? 's' : ''}${count ? ` · ${bytesLabel(bytes)}` : ''}</div></div><button class="source-remove" data-remove-source="${escapeHTML(source)}" aria-label="Retirer ce dossier" ${state.scanning ? 'disabled' : ''}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div>`;
   }).join('');
   document.querySelectorAll('[data-remove-source]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -213,6 +217,10 @@ function updateDuplicateTools() {
   $('duplicateCheckHint').hidden = !count;
   $('verifyDuplicates').disabled = state.duplicateCheckBusy || !count;
   $('verifyDuplicates').textContent = state.duplicateCheckBusy ? 'Comparaison en cours…' : 'Comparer le contenu des doublons probables';
+  $('cancelDuplicateCheck').hidden = !state.duplicateCheckBusy;
+  $('cancelDuplicateCheck').disabled = false;
+  $('cancelDuplicateCheck').textContent = 'Arrêter';
+  formatSummary();
 }
 
 function updateReviewCount() {
@@ -247,15 +255,25 @@ function setScanProgress(progress) {
 
 async function scanSelectedSources() {
   if (!state.sourcePaths.length) return;
+  state.scanOperationId = crypto.randomUUID();
   state.reviewFilter = '';
   state.scanning = true;
   $('scanProgress').hidden = false;
   $('toOptions').disabled = true;
   $('chooseSources').disabled = true;
+  renderSources();
   $('progressBar').style.width = '0%';
   $('progressText').textContent = 'Préparation de l’analyse…';
   try {
-    const result = await window.projectTool.scanSources(state.sourcePaths);
+    const result = await window.projectTool.scanSources(state.scanOperationId, state.sourcePaths);
+    if (result.cancelled) {
+      state.scanId = '';
+      state.files = [];
+      renderSources();
+      renderTable();
+      showToast('Analyse interrompue. Tu peux la relancer ou retirer un dossier.');
+      return;
+    }
     state.scanId = result.scanId;
     state.files = result.files;
     $('duplicateCheckStatus').textContent = '';
@@ -272,13 +290,21 @@ async function scanSelectedSources() {
     renderTable();
   } finally {
     state.scanning = false;
+    state.scanOperationId = '';
     $('scanProgress').hidden = true;
     $('chooseSources').disabled = false;
+    $('cancelScan').disabled = false;
+    $('cancelScan').textContent = 'Arrêter';
+    renderSources();
     formatSummary();
   }
 }
 
 async function chooseSources() {
+  if (state.sourcePaths.length && !state.files.length) {
+    await scanSelectedSources();
+    return;
+  }
   try {
     const paths = await window.projectTool.chooseSources();
     if (!paths.length) return;
@@ -421,6 +447,15 @@ $('toOptions').addEventListener('click', () => setStep(3));
 $('backToSources').addEventListener('click', () => setStep(2));
 $('chooseSources').addEventListener('click', chooseSources);
 $('createNow').addEventListener('click', createProjectNow);
+$('cancelScan').addEventListener('click', async () => {
+  if (!state.scanOperationId) return;
+  $('cancelScan').disabled = true;
+  $('cancelScan').textContent = 'Arrêt…';
+  try { await window.projectTool.cancelOperation(state.scanOperationId); } catch (_) {
+    $('cancelScan').disabled = false;
+    $('cancelScan').textContent = 'Arrêter';
+  }
+});
 $('filterInput').addEventListener('input', (event) => { state.filter = event.target.value; state.page = 0; renderTable(); });
 $('hideDuplicates').addEventListener('change', (event) => {
   if (event.target.checked) state.files.filter((file) => file.duplicateOf).forEach((file) => { file.include = false; file.duplicateAutoExcluded = false; file.duplicateManuallyChanged = true; });
@@ -428,14 +463,19 @@ $('hideDuplicates').addEventListener('change', (event) => {
   renderTable();
 });
 $('verifyDuplicates').addEventListener('click', async () => {
+  state.duplicateOperationId = crypto.randomUUID();
   state.duplicateCheckBusy = true;
   $('duplicateCheckStatus').textContent = 'Préparation…';
   updateDuplicateTools();
   try {
-    const result = await window.projectTool.verifyDuplicates({
+    const result = await window.projectTool.verifyDuplicates(state.duplicateOperationId, {
       scanId: state.scanId,
       files: state.files.map((file) => ({ id: file.id, include: file.include, duplicateManuallyChanged: file.duplicateManuallyChanged }))
     });
+    if (result.cancelled) {
+      $('duplicateCheckStatus').textContent = 'Comparaison interrompue. Les résultats précédents sont conservés.';
+      return;
+    }
     const messages = [];
     if (result.identicalGroups) messages.push(`${result.identicalGroups} groupe(s) confirmé(s)`);
     if (result.distinctFiles) messages.push(`${result.distinctFiles} fichier(s) distinct(s) réintégré(s)`);
@@ -447,7 +487,19 @@ $('verifyDuplicates').addEventListener('click', async () => {
     showToast(error.message || 'Comparaison impossible.');
   } finally {
     state.duplicateCheckBusy = false;
+    state.duplicateOperationId = '';
     updateDuplicateTools();
+  }
+});
+$('cancelDuplicateCheck').addEventListener('click', async () => {
+  if (!state.duplicateOperationId) return;
+  $('cancelDuplicateCheck').disabled = true;
+  $('cancelDuplicateCheck').textContent = 'Arrêt…';
+  $('duplicateCheckStatus').textContent = 'Arrêt de la comparaison…';
+  try { await window.projectTool.cancelOperation(state.duplicateOperationId); } catch (_) {
+    $('cancelDuplicateCheck').disabled = false;
+    $('cancelDuplicateCheck').textContent = 'Arrêter';
+    $('duplicateCheckStatus').textContent = 'Impossible d’arrêter la comparaison.';
   }
 });
 $('retryConnection').addEventListener('click', async () => {

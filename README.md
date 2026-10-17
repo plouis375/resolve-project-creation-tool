@@ -1,4 +1,4 @@
-# Resolve Project Creation Tool — v0.09
+# Resolve Project Creation Tool — v0.10
 
 Assistant macOS intégré à **DaVinci Resolve Studio** pour créer un projet, trier les médias dans le Media Pool et préparer le montage. Il s’ouvre depuis le menu de Resolve, guide la préparation, puis se ferme quand le projet est prêt.
 
@@ -17,14 +17,14 @@ Le plugin a été vérifié avec DaVinci Resolve Studio 21.1.1 sur macOS. Le fon
 
 ### Installeur graphique
 
-1. Télécharge `Resolve-Project-Creation-Tool-v0.09.pkg` depuis la [dernière version](https://github.com/plouis375/resolve-project-creation-tool/releases/latest).
+1. Télécharge `Resolve-Project-Creation-Tool-v0.10.pkg` depuis la [dernière version](https://github.com/plouis375/resolve-project-creation-tool/releases/latest).
 2. Ferme DaVinci Resolve, puis ouvre le `.pkg` par double-clic et suis les étapes de l’installeur macOS. Il demande un mot de passe administrateur pour copier le plugin dans le dossier partagé de Resolve.
 3. Si macOS bloque le paquet parce qu’il n’est pas signé, ouvre **Réglages Système → Confidentialité et sécurité**, puis choisis **Ouvrir quand même** pour ce paquet. Ce paquet n’est pas signé ni notarié faute de compte développeur Apple.
 4. Rouvre Resolve et choisis **Workspace → Workflow Integrations → Resolve Project Creation Tool**.
 
 ### Installation depuis l’archive ZIP
 
-Si tu préfères ne pas utiliser le paquet macOS, télécharge `Resolve-Project-Creation-Tool-v0.09.zip`, décompresse-le, ferme Resolve et ouvre `install.command` par double-clic. Confirme l’ouverture si Gatekeeper le demande, puis saisis ton mot de passe administrateur. Cette méthode conserve aussi une sauvegarde de l’installation précédente.
+Si tu préfères ne pas utiliser le paquet macOS, télécharge `Resolve-Project-Creation-Tool-v0.10.zip`, décompresse-le, ferme Resolve et ouvre `install.command` par double-clic. Confirme l’ouverture si Gatekeeper le demande, puis saisis ton mot de passe administrateur. Cette méthode conserve aussi une sauvegarde de l’installation précédente.
 
 Une sauvegarde horodatée de la version précédente est conservée dans `.backups`, à l’intérieur du dossier des intégrations Resolve.
 
@@ -75,7 +75,7 @@ L’analyse utilise d’abord le `ffprobe` inclus dans l’archive pour lire les
 
 Les doublons probables sont d’abord repérés rapidement avec le **nom, la taille et la durée**. Les correspondances ultérieures sont exclues par défaut; tu peux les réinclure dans la liste. Pour confirmer les alertes, clique sur **Comparer le contenu des doublons probables** : l’outil calcule une empreinte SHA-256 sur les fichiers des groupes suspects. Les fichiers dont le contenu diffère sont retirés des doublons et réintégrés s’ils avaient été exclus automatiquement. Si un fichier est illisible pendant la comparaison, le groupe reste marqué comme probable et non confirmé. Cette lecture complète peut prendre du temps pour de gros fichiers; elle ne porte que sur les groupes suspects.
 
-L’écran **Sources** regroupe les alertes par type et permet de filtrer la liste : fichiers vides, analyse technique indisponible, caméra à identifier, date de création utilisée et doublons probables. Une analyse technique indisponible ne prouve pas que Resolve ne peut pas lire le média. Les alertes n’empêchent pas la création : tu peux garder ou exclure chaque fichier. Les fichiers originaux ne sont ni modifiés ni supprimés.
+L’écran **Sources** regroupe les alertes par type et permet de filtrer la liste : fichiers vides, analyse technique indisponible, caméra à identifier, date de création utilisée et doublons probables. Le scan et la comparaison SHA-256 peuvent être interrompus sans perdre les dossiers sélectionnés ni les résultats précédemment confirmés. Une analyse technique indisponible ne prouve pas que Resolve ne peut pas lire le média. Les alertes n’empêchent pas la création : tu peux garder ou exclure chaque fichier. Les fichiers originaux ne sont ni modifiés ni supprimés.
 
 ## Timeline d’assemblage (facultative)
 
@@ -89,7 +89,7 @@ Cette option prépare une timeline de départ; elle ne crée pas de montage édi
 
 Le générateur travaille sur les dossiers surveillés et leurs sous-dossiers; il peut donc traiter des fichiers qui ont été exclus de la liste d’import du plugin. Les proxies sont écrits dans des sous-dossiers `proxy` à côté des médias. Resolve associe automatiquement les proxies reconnus à leurs originaux. L’outil ne change pas le format, la résolution ni le réglage de démarrage du générateur. Selon ce dernier réglage, le traitement peut démarrer automatiquement à l’ouverture. Les dossiers enregistrés restent surveillés jusqu’à ce que tu les retires dans l’application. L’outil met à jour le fichier de préférences local de Blackmagic Proxy Generator; Blackmagic ne documente pas d’API publique pour cette opération, donc une évolution de son format de préférences pourrait nécessiter une mise à jour du plugin.
 
-## Fonctions hors périmètre de la v0.09
+## Fonctions hors périmètre de la v0.10
 
 - **Archivage** — Aucun archivage de projet n’est proposé; cette fonction n’est pas prévue dans le périmètre actuel.
 - **Dossiers Finder et sauvegarde des médias** — Le plugin organise les chutiers Resolve et conserve les médias à leur emplacement. Il ne crée pas une arborescence disque et ne réalise pas de copie de sauvegarde.

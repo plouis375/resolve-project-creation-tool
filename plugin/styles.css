@@ -77,6 +77,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
 .source-meta { margin-top: 6px; color: var(--secondary); font-size: 12px; }
 .source-remove { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border: 0; border-radius: 5px; background: transparent; color: #828a95; cursor: pointer; }
 .source-remove:hover { background: #33272a; color: #ff8b8e; }
+.source-remove:disabled { opacity: .4; cursor: not-allowed; }
 .source-remove svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .source-add { display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px dashed #4a5059; border-radius: var(--radius); background: #15171a; color: #b5bbc4; cursor: pointer; transition: border-color 160ms ease-out, background 160ms ease-out, color 160ms ease-out; }
 .source-add:hover { border-color: #757c86; background: #1d2025; color: var(--text); }
@@ -128,13 +129,14 @@ h2 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
 .review-filter span { color: #f0bd61; font-variant-numeric: tabular-nums; }
 .review-filter:hover,.review-filter.active { border-color: #8b713f; background: #28231b; color: #f3d28e; }
 .review-explanation { margin: 0 0 8px; color: var(--secondary); font-size: 11px; line-height: 1.4; }
-.duplicate-tools { display: flex; align-items: center; gap: 10px; padding: 0 0 8px; color: var(--secondary); font-size: 11px; }
+.duplicate-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0 0 8px; color: var(--secondary); font-size: 12px; }
 .row-toggle { width: 14px; height: 14px; accent-color: var(--red); cursor: pointer; }
 .duplicate-row { background: #201c18; }
 .empty-filter { padding: 32px !important; color: var(--secondary) !important; text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
-.scan-progress { display: flex; align-items: center; gap: 12px; padding: 12px 1px 3px; color: var(--secondary); font-size: 12px; }
+.scan-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 1px 3px; color: var(--secondary); font-size: 12px; }
+.cancel-operation { flex: 0 0 auto; white-space: nowrap; }
 .progress-track { width: 160px; height: 3px; overflow: hidden; border-radius: 3px; background: #30343b; }
 .progress-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--red); transition: width 180ms ease-out; }
 .source-warning { display: flex; align-items: center; gap: 8px; padding-top: 9px; color: var(--amber); font-size: 12px; }

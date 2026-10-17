@@ -87,6 +87,7 @@
         <div class="duplicate-tools" id="duplicateTools" hidden>
           <button class="button secondary compact" id="verifyDuplicates">Comparer le contenu des doublons probables</button>
           <span id="duplicateCheckStatus" role="status" aria-live="polite"></span>
+          <button class="button secondary compact cancel-operation" id="cancelDuplicateCheck" hidden>Arrêter</button>
         </div>
         <p class="review-explanation" id="duplicateCheckHint" hidden>Cette vérification lit entièrement les fichiers suspects et peut prendre du temps selon leur taille.</p>
         <p class="review-explanation" id="reviewExplanation" hidden>Une analyse technique indisponible ne prouve pas que Resolve ne peut pas lire le fichier. Les alertes n’empêchent pas la création : tu peux garder ou exclure chaque média.</p>
@@ -99,7 +100,8 @@
         </div>
         <div class="scan-progress" id="scanProgress" hidden>
           <div class="progress-track"><span id="progressBar"></span></div>
-          <span id="progressText">Analyse des médias…</span>
+          <span id="progressText" role="status" aria-live="polite">Analyse des médias…</span>
+          <button class="button secondary compact cancel-operation" id="cancelScan">Arrêter</button>
         </div>
         <div class="source-warning" id="probeWarning" hidden>
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8 18 17H2L10 2.8Z"/><path d="M10 7v4.5M10 14.2v.1"/></svg>

@@ -1,5 +1,11 @@
 # Historique des versions
 
+## v0.10 — 17 octobre 2026
+
+- Permet d’interrompre le scan des dossiers et l’analyse des médias; les dossiers sélectionnés restent disponibles pour relancer le scan.
+- Permet d’interrompre la comparaison SHA-256; les résultats précédemment confirmés sont conservés.
+- Interrompt aussi les opérations en cours lorsque la fenêtre du plugin est fermée.
+
 ## v0.09 — 17 octobre 2026
 
 - Ajoute un installeur macOS graphique `.pkg`, à ouvrir par double-clic.
